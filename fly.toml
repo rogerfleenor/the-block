@@ -1,0 +1,31 @@
+# Fly.io app config — `fly launch --no-deploy` once, then `fly deploy`.
+app = "the-block"
+primary_region = "yyz"
+kill_signal = "SIGINT"
+kill_timeout = "10s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  API_PORT = "4000"
+  AGENT_LLM = "mock"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

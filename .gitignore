@@ -1,6 +1,33 @@
 node_modules/
 .env
 .env.local
+.env.*.local
 .DS_Store
 *.log
 *.bak
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+/blob-report/
+/playwright/.cache/
+
+# Runtime data
+apps/api/.data/
+.cache/
+
+# Vite
+apps/web/dev-dist/
+apps/web/.vite/
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/

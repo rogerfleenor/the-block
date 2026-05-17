@@ -1,0 +1,18 @@
+node_modules
+dist
+build
+coverage
+playwright-report
+test-results
+.data
+*.tsbuildinfo
+data/vehicles.json
+apps/web/dev-dist
+apps/web/.vite
+
+# Upstream challenge files — preserved verbatim
+README.md
+WALKTHROUGH.md
+SUBMISSION.md
+scripts/generate_vehicles.mjs
+package-lock.json
