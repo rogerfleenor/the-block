@@ -3,9 +3,8 @@ import { Filter, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-
-import { CommandBar } from '../agent/CommandBar';
 import { ConfirmAction } from '../agent/ConfirmAction';
+import { LazyCommandBar } from '../agent/LazyCommandBar';
 
 import { FilterRail } from './FilterRail';
 import { InventoryGrid } from './InventoryGrid';
@@ -76,7 +75,10 @@ export function InventoryPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      ) {
         return;
       }
       if (e.key === '/') {
@@ -100,7 +102,11 @@ export function InventoryPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex flex-1 items-center">
-          <Search size={14} aria-hidden="true" className="pointer-events-none absolute left-3 text-neutral-400" />
+          <Search
+            size={14}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 text-neutral-400"
+          />
           <input
             ref={searchRef}
             type="search"
@@ -110,11 +116,21 @@ export function InventoryPage() {
             className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-8 pr-3 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 dark:border-neutral-700 dark:bg-neutral-900"
             aria-label="Search inventory"
           />
-          <span className="pointer-events-none absolute right-3 text-[10px] text-neutral-400">/</span>
+          <span className="pointer-events-none absolute right-3 text-[10px] text-neutral-400">
+            /
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <SortControl value={sort} onChange={(s) => setQuery({ ...query, sort: s as VehicleQuery['sort'] })} />
-          <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setFiltersOpen(true)}>
+          <SortControl
+            value={sort}
+            onChange={(s) => setQuery({ ...query, sort: s as VehicleQuery['sort'] })}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setFiltersOpen(true)}
+          >
             <Filter size={14} aria-hidden="true" />
             Filters
           </Button>
@@ -130,7 +146,12 @@ export function InventoryPage() {
             totals={data?.total ?? 0}
           />
         </div>
-        <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filters" side="bottom">
+        <Sheet
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          title="Filters"
+          side="bottom"
+        >
           <FilterRail
             value={query}
             onChange={(next) => {
@@ -148,8 +169,12 @@ export function InventoryPage() {
           <div className="flex items-baseline justify-between text-sm">
             <p className="text-neutral-500">
               {data ? `${data.total} lots` : 'Loading…'}{' '}
-              <span aria-live="polite" className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600">
-                <span className="inline-block size-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
+              <span
+                aria-live="polite"
+                className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-600"
+              >
+                <span className="inline-block size-1.5 animate-pulse rounded-full bg-emerald-500" />{' '}
+                Live
               </span>
             </p>
           </div>
@@ -181,7 +206,7 @@ export function InventoryPage() {
         </div>
       </div>
 
-      <CommandBar />
+      <LazyCommandBar />
       <ConfirmAction />
     </div>
   );

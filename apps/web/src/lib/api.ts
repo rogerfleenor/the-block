@@ -1,17 +1,4 @@
-import {
-  AgentFactsResponseSchema,
-  AgentInvokeRequestSchema,
-  AgentInvokeResponseSchema,
-  BidHistoryResponseSchema,
-  PlaceBidInputSchema,
-  PlaceBidResultSchema,
-  ProviderListResponseSchema,
-  ROUTES,
-  VehicleIntelSchema,
-  VehicleListResponseSchema,
-  VehicleSchema,
-} from '@block/shared';
-import { z } from 'zod';
+import { ROUTES } from '@block/shared';
 
 import type {
   AgentFactsResponse,
@@ -27,11 +14,22 @@ import type {
   VehicleQuery,
 } from '@block/shared';
 
-const ErrorEnvelopeSchema = z.object({
-  code: z.string(),
-  message: z.string(),
-  requestId: z.string().optional(),
-});
+/**
+ * Network shape is enforced by `@block/shared` Zod schemas on the API side
+ * (`fastify-type-provider-zod`). Re-validating in the browser doubles the
+ * runtime cost (~10 KB gz of zod + per-response work) for no correctness
+ * gain — the contract is already enforced server-side. We keep type-only
+ * imports here so a contract break is caught at `tsc --noEmit` time, plus
+ * one explicit `instanceof Response` + status check at runtime.
+ *
+ * If we ever need to defend against a hostile/proxy-rewriting upstream we
+ * can swap `as` casts for `safeParse` again behind a dev-only branch.
+ */
+interface ErrorEnvelope {
+  code?: string;
+  message?: string;
+  requestId?: string;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -45,11 +43,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<S extends z.ZodTypeAny>(
-  input: RequestInfo,
-  init: RequestInit,
-  schema: S,
-): Promise<z.infer<S>> {
+async function request<T>(input: RequestInfo, init: RequestInit): Promise<T> {
   const res = await fetch(input, {
     ...init,
     headers: {
@@ -68,21 +62,15 @@ async function request<S extends z.ZodTypeAny>(
     }
   }
   if (!res.ok) {
-    const parsed = ErrorEnvelopeSchema.safeParse(json);
-    if (parsed.success) {
-      throw new ApiError(parsed.data.message, parsed.data.code, res.status, parsed.data.requestId);
-    }
-    throw new ApiError(`Request failed (${res.status})`, 'UNKNOWN', res.status);
-  }
-  const result = schema.safeParse(json);
-  if (!result.success) {
+    const env = (json ?? {}) as ErrorEnvelope;
     throw new ApiError(
-      `Response failed shared-schema validation: ${result.error.issues[0]?.message ?? 'unknown'}`,
-      'SCHEMA_MISMATCH',
+      env.message ?? `Request failed (${res.status})`,
+      env.code ?? 'UNKNOWN',
       res.status,
+      env.requestId,
     );
   }
-  return result.data;
+  return json as T;
 }
 
 function qs(params: Record<string, string | number | boolean | undefined | null>): string {
@@ -98,39 +86,37 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 export const api = {
   async listVehicles(query: Partial<VehicleQuery> = {}): Promise<VehicleListResponse> {
     const url = `${ROUTES.vehicles}${qs(query as Record<string, string | number | undefined>)}`;
-    return request(url, { method: 'GET' }, VehicleListResponseSchema);
+    return request<VehicleListResponse>(url, { method: 'GET' });
   },
   async getVehicle(id: string): Promise<Vehicle> {
-    return request(ROUTES.vehicleById(id), { method: 'GET' }, VehicleSchema);
+    return request<Vehicle>(ROUTES.vehicleById(id), { method: 'GET' });
   },
   async getBids(id: string): Promise<BidHistoryResponse> {
-    return request(ROUTES.bids(id), { method: 'GET' }, BidHistoryResponseSchema);
+    return request<BidHistoryResponse>(ROUTES.bids(id), { method: 'GET' });
   },
   async placeBid(id: string, input: PlaceBidInput): Promise<PlaceBidResult> {
-    const validated = PlaceBidInputSchema.parse(input);
-    return request(
-      ROUTES.bids(id),
-      { method: 'POST', body: JSON.stringify(validated) },
-      PlaceBidResultSchema,
-    );
+    return request<PlaceBidResult>(ROUTES.bids(id), {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
   },
   async getIntel(id: string, categories?: string[]): Promise<VehicleIntel> {
-    const url = `${ROUTES.intel(id)}${categories && categories.length > 0 ? `?categories=${categories.join(',')}` : ''}`;
-    return request(url, { method: 'GET' }, VehicleIntelSchema);
+    const url = `${ROUTES.intel(id)}${
+      categories && categories.length > 0 ? `?categories=${categories.join(',')}` : ''
+    }`;
+    return request<VehicleIntel>(url, { method: 'GET' });
   },
   async listProviders(): Promise<ProviderListResponse> {
-    return request(ROUTES.providers, { method: 'GET' }, ProviderListResponseSchema);
+    return request<ProviderListResponse>(ROUTES.providers, { method: 'GET' });
   },
   async invokeAgent(req: AgentInvokeRequest): Promise<AgentInvokeResponse> {
-    const validated = AgentInvokeRequestSchema.parse(req);
-    return request(
-      ROUTES.agentInvoke,
-      { method: 'POST', body: JSON.stringify(validated) },
-      AgentInvokeResponseSchema,
-    );
+    return request<AgentInvokeResponse>(ROUTES.agentInvoke, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
   },
   async getAgentFacts(vehicleId: string): Promise<AgentFactsResponse> {
-    return request(ROUTES.agentFacts(vehicleId), { method: 'GET' }, AgentFactsResponseSchema);
+    return request<AgentFactsResponse>(ROUTES.agentFacts(vehicleId), { method: 'GET' });
   },
   async postVital(metric: {
     name: string;

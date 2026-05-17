@@ -1,8 +1,21 @@
-import { WsClientMessageSchema, WsServerMessageSchema, WS_PATH } from '@block/shared';
+import { WS_PATH } from '@block/shared';
 
 import type { WsClientMessage, WsServerMessage, WsTopic } from '@block/shared';
 
 type Listener = (msg: WsServerMessage) => void;
+
+/**
+ * Cheap structural guard for incoming WS messages. The server uses the
+ * shared Zod `WsServerMessageSchema` to encode, so a discriminated `type`
+ * field is always present; we don't pay for runtime Zod here.
+ */
+function looksLikeServerMessage(value: unknown): value is WsServerMessage {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { type?: unknown }).type === 'string'
+  );
+}
 
 interface WsClientOptions {
   url?: string;
@@ -32,9 +45,8 @@ export class WsClient {
     if (typeof BroadcastChannel !== 'undefined') {
       this.channel = new BroadcastChannel(opts.broadcastChannelName ?? 'auction');
       this.channel.onmessage = (e: MessageEvent<unknown>) => {
-        const parsed = WsServerMessageSchema.safeParse(e.data);
-        if (parsed.success) {
-          this.dispatch(parsed.data, { skipBroadcast: true });
+        if (looksLikeServerMessage(e.data)) {
+          this.dispatch(e.data, { skipBroadcast: true });
         }
       };
     }
@@ -50,7 +62,10 @@ export class WsClient {
 
   connect(): void {
     if (this.stopped) return;
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
     try {
@@ -75,9 +90,8 @@ export class WsClient {
           return;
         }
       }
-      const parsed = WsServerMessageSchema.safeParse(payload);
-      if (!parsed.success) return;
-      this.dispatch(parsed.data);
+      if (!looksLikeServerMessage(payload)) return;
+      this.dispatch(payload);
     };
     this.ws.onclose = () => this.scheduleReconnect();
     this.ws.onerror = () => {
@@ -115,16 +129,14 @@ export class WsClient {
 
   /** Broadcast a server-shaped message to other tabs without touching the server. Used for optimistic bid updates. */
   broadcastLocal(msg: WsServerMessage): void {
-    const parsed = WsServerMessageSchema.safeParse(msg);
-    if (!parsed.success) return;
     if (this.channel) {
       try {
-        this.channel.postMessage(parsed.data);
+        this.channel.postMessage(msg);
       } catch {
         // ignore
       }
     }
-    this.dispatch(parsed.data, { skipBroadcast: true });
+    this.dispatch(msg, { skipBroadcast: true });
   }
 
   subscribe(topic: WsTopic): void {
@@ -143,11 +155,9 @@ export class WsClient {
   }
 
   send(msg: WsClientMessage): void {
-    const parsed = WsClientMessageSchema.safeParse(msg);
-    if (!parsed.success) return;
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     try {
-      this.ws.send(JSON.stringify(parsed.data));
+      this.ws.send(JSON.stringify(msg));
     } catch {
       // ignore
     }

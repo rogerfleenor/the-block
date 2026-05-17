@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
 
 import type { PlaceBidResult, Vehicle } from '@block/shared';
 
@@ -11,7 +10,6 @@ import { getWsClient } from '@/lib/ws';
 import { useBidStore } from '@/state/bidStore';
 import { Button } from '@/ui/Button';
 
-
 interface BidFormProps {
   vehicle: Vehicle;
   /** Used by SmartBidBar to prefill amount. */
@@ -19,13 +17,12 @@ interface BidFormProps {
   onPlaced?: (result: PlaceBidResult) => void;
 }
 
-interface FormValues {
-  amount: number;
-}
-
 /**
- * Uses the shared `validateBidAmount` helper directly inside react-hook-form
- * so the client + server reject identical inputs.
+ * Hand-rolled state + shared `validateBidAmount` (no react-hook-form, no
+ * @hookform/resolvers). Saves ~12 KB gz from the bundle vs. the original
+ * RHF wiring. Server is still authoritative: this rejects the same inputs
+ * as `apps/api/src/services/bidEngine.ts` because both call the same helper
+ * from `@block/shared`.
  */
 export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
   const validateFn = useBidStore((s) => s.validate);
@@ -34,40 +31,38 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
   const confirm = useBidStore((s) => s.confirm);
   const qc = useQueryClient();
 
-  const defaultAmount = prefilledAmount ?? Math.max(
-    vehicle.starting_bid,
-    vehicle.current_bid + Math.max(100, Math.ceil(vehicle.current_bid * 0.01)),
-  );
+  const defaultAmount =
+    prefilledAmount ??
+    Math.max(
+      vehicle.starting_bid,
+      vehicle.current_bid + Math.max(100, Math.ceil(vehicle.current_bid * 0.01)),
+    );
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors, isSubmitting },
-    watch,
-    reset,
-  } = useForm<FormValues>({
-    defaultValues: { amount: defaultAmount },
-    mode: 'onBlur',
-  });
+  const [amountStr, setAmountStr] = useState<string>(String(defaultAmount));
+  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     if (prefilledAmount && prefilledAmount > 0) {
-      setValue('amount', prefilledAmount, { shouldDirty: true, shouldValidate: true });
+      setAmountStr(String(prefilledAmount));
+      setTouched(true);
     }
-  }, [prefilledAmount, setValue]);
+  }, [prefilledAmount]);
+
+  const amountNum = Number(amountStr) || 0;
+  const validation = validateFn(vehicle, amountNum);
+  const showError = touched && !validation.ok;
 
   const mutation = useMutation({
-    mutationFn: async (values: FormValues) => api.placeBid(vehicle.id, { amount: values.amount }),
-    onMutate: (values) => {
-      const optimisticId = beginOptimistic(vehicle.id, values.amount);
+    mutationFn: async (amount: number) => api.placeBid(vehicle.id, { amount }),
+    onMutate: (amount: number) => {
+      const optimisticId = beginOptimistic(vehicle.id, amount);
       return { optimisticId };
     },
-    onError: (err, _vars, ctx) => {
+    onError: (err, _amount, ctx) => {
       const message = err instanceof Error ? err.message : 'Bid failed';
       if (ctx?.optimisticId) rollback(vehicle.id, ctx.optimisticId, message);
     },
-    onSuccess: (result, _vars, ctx) => {
+    onSuccess: (result, _amount, ctx) => {
       if (ctx?.optimisticId) confirm(vehicle.id, ctx.optimisticId, result);
       qc.invalidateQueries({ queryKey: queryKeys.vehicle(vehicle.id) });
       qc.invalidateQueries({ queryKey: queryKeys.bids(vehicle.id) });
@@ -82,18 +77,25 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
         ts: result.bid.ts,
       });
       onPlaced?.(result);
-      reset({ amount: result.currentBid + Math.max(100, Math.ceil(result.currentBid * 0.01)) });
+      const nextMin = result.currentBid + Math.max(100, Math.ceil(result.currentBid * 0.01));
+      setAmountStr(String(nextMin));
+      setTouched(false);
     },
   });
 
-  const onSubmit = handleSubmit((values) => mutation.mutate(values));
-
-  const amount = watch('amount');
-  const validation = validateFn(vehicle, Number(amount) || 0);
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTouched(true);
+    if (!validation.ok) return;
+    mutation.mutate(amountNum);
+  };
 
   return (
     <form className="space-y-2" onSubmit={onSubmit} noValidate>
-      <label htmlFor={`bid-amount-${vehicle.id}`} className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+      <label
+        htmlFor={`bid-amount-${vehicle.id}`}
+        className="block text-xs font-medium text-neutral-600 dark:text-neutral-400"
+      >
         Your bid
       </label>
       <div className="flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30 dark:border-neutral-700 dark:bg-neutral-900">
@@ -102,31 +104,34 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
         </span>
         <input
           id={`bid-amount-${vehicle.id}`}
+          name="amount"
           type="number"
           inputMode="decimal"
           step={100}
           min={validation.minNextBid}
+          value={amountStr}
+          onChange={(e) => setAmountStr(e.target.value)}
+          onBlur={() => setTouched(true)}
           className="flex-1 bg-transparent py-2 text-base outline-none"
-          aria-invalid={!validation.ok}
+          aria-invalid={showError}
           aria-describedby={`bid-help-${vehicle.id}`}
-          {...register('amount', {
-            valueAsNumber: true,
-            validate: (val) => {
-              const v = validateFn(vehicle, Number(val) || 0);
-              return v.ok ? true : v.message;
-            },
-          })}
         />
       </div>
       <p id={`bid-help-${vehicle.id}`} className="text-[11px] text-neutral-500">
         Min next bid: <strong>{formatCurrency(validation.minNextBid)}</strong>
       </p>
-      {errors.amount ? (
+      {showError && !validation.ok ? (
         <p role="alert" className="text-xs text-red-600">
-          {errors.amount.message}
+          {validation.message}
         </p>
       ) : null}
-      <Button type="submit" variant="primary" size="lg" full disabled={isSubmitting || mutation.isPending}>
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        full
+        disabled={mutation.isPending || !validation.ok}
+      >
         {mutation.isPending ? 'Placing…' : 'Place Bid'}
       </Button>
       {vehicle.buy_now_price ? (
@@ -135,7 +140,7 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
           variant="secondary"
           size="md"
           full
-          onClick={() => mutation.mutate({ amount: vehicle.buy_now_price! })}
+          onClick={() => mutation.mutate(vehicle.buy_now_price!)}
         >
           Buy Now {formatCurrency(vehicle.buy_now_price)}
         </Button>

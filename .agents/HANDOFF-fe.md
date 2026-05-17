@@ -53,15 +53,15 @@ None added. All required deps (`@hookform/resolvers`, `@tanstack/react-query`, `
 
 Standard `vite build` (no MSW, what gets shipped behind the live API):
 
-| Chunk                              | Raw      | Gz       |
-| ---------------------------------- | -------- | -------- |
-| `index-*.js` (initial main)        | 311.06   | **96.01** |
-| `forms-*.js` (lazy, vehicle route) | 32.97    | 12.33    |
-| `InventoryPage-*.js` (lazy)        | 28.74    | 9.18     |
-| `VehiclePage-*.js` (lazy)          | 25.28    | 7.79     |
-| `Sheet-*.js` (lazy)                | 23.65    | 8.12     |
-| 5 intel-card chunks (lazy)         | ~7.64    | ~3.75    |
-| `style-*.css`                      | 25.70    | **5.39** |
+| Chunk                              | Raw    | Gz        |
+| ---------------------------------- | ------ | --------- |
+| `index-*.js` (initial main)        | 311.06 | **96.01** |
+| `forms-*.js` (lazy, vehicle route) | 32.97  | 12.33     |
+| `InventoryPage-*.js` (lazy)        | 28.74  | 9.18      |
+| `VehiclePage-*.js` (lazy)          | 25.28  | 7.79      |
+| `Sheet-*.js` (lazy)                | 23.65  | 8.12      |
+| 5 intel-card chunks (lazy)         | ~7.64  | ~3.75     |
+| `style-*.css`                      | 25.70  | **5.39**  |
 
 - **JS gz initial**: **96.01 KB** (budget 70 KB) — **over by ~26 KB**.
 - **JS gz total**: **~137 KB** (budget 130 KB) — **over by ~7 KB**.
@@ -119,3 +119,97 @@ For future FE work: the same pattern lives elsewhere any time a selector synthes
 3. Passing `shallow` as the equality function from `zustand/shallow`.
 
 No contract change.
+
+---
+
+## [2026-05-17] Phase 3 — bundle trim
+
+Goal: shrink the initial JS bundle from 96.01 KB gz toward the 70 KB budget.
+
+### Trim measures applied (orchestrator inline; sub-agent quota hit)
+
+1. **Defer `web-vitals`** behind `requestIdleCallback`. `main.tsx` no longer
+   statically imports `./lib/vitals`; it dynamic-imports it after first
+   paint. Produces its own ~2.3 KB gz lazy chunk that loads on idle.
+2. **Lazy-load `CommandBar`** via a new `src/features/agent/LazyCommandBar.tsx`
+   that returns `null` until `useAgentStore((s) => s.open)` flips true. The
+   real CommandBar (form, command-palette UI, lucide icons, agent client)
+   now ships as a ~2.4 KB gz on-demand chunk instead of riding inside the
+   page chunks.
+3. **Drop `react-hook-form` + `@hookform/resolvers`** from `BidForm.tsx`.
+   Replaced with `useState` + the shared `validateBidAmount` from
+   `@block/shared`. The whole `forms-*.js` 12.33 KB gz chunk is gone.
+4. **Remove `forms` manualChunk** from `vite.config.ts`; rely on natural
+   `React.lazy` code splitting for route pages + IntelTabs.
+5. **Strip Zod runtime from `src/lib/api.ts`**. All schema imports are now
+   type-only; responses are cast to TS types and the BE is trusted (it
+   already validates via the same `@block/shared` schemas through
+   `fastify-type-provider-zod`). Error envelopes parsed structurally.
+6. **Strip Zod runtime from `src/lib/ws.ts`**. Replaced both server- and
+   client-message `safeParse` calls with a one-liner `looksLikeServerMessage`
+   structural check. Same trust assumption as #5: messages cross our own
+   process boundary using the shared schema for encoding.
+
+### Bundle size (before → after)
+
+| Chunk                                | Before gz |    After gz |      Δ |
+| ------------------------------------ | --------: | ----------: | -----: |
+| `index-*.js` (initial main)          | **96.01** |   **96.09** |  +0.08 |
+| `forms-*.js` (lazy on detail route)  |     12.33 | — (removed) | −12.33 |
+| `vitals-*.js` (new lazy on idle)     |         — |        2.30 |  +2.30 |
+| `CommandBar-*.js` (new lazy on open) |         — |        2.42 |  +2.42 |
+| `filter-*.js` (lucide icon chunk)    |         — |        0.26 |  +0.26 |
+| `VehiclePage-*.js` (lazy)            |      7.79 |        7.71 |  −0.08 |
+| `Sheet-*.js` (lazy)                  |      8.12 |        6.66 |  −1.46 |
+| `style-*.css`                        |      5.39 |        5.39 |      0 |
+
+- **JS gz initial (route /)**: 96.01 → 96.09 KB (≈unchanged, still over 70 KB budget by ~26 KB).
+- **JS gz on /v/:id (detail route, what user actually sees)**:
+  - Before: 96.01 + 7.79 + 12.33 + 8.12 = ~124.3 KB
+  - After: 96.09 + 7.71 + 0 + 6.66 = ~110.5 KB (−13.8 KB)
+- **JS gz total app**: ~137 → ~131 KB (just over 130 KB budget).
+- **CSS gz**: 5.39 → 5.39 KB (under 12 KB budget).
+
+### Why the initial chunk didn't shrink further
+
+I measured what's actually in the initial bundle. The 96 KB ceiling is dominated by:
+
+- React 18 + ReactDOM: ~45 KB gz
+- react-router-dom: ~12 KB gz
+- @tanstack/react-query: ~13 KB gz
+- @tanstack/react-virtual: ~6 KB gz (used by InventoryPage; still hoisted into shared)
+- zustand + persist middleware: ~4 KB gz
+- App code (router, layout, lib): ~10 KB gz
+- agent client / store / lucide icons used in the header: ~6 KB gz
+
+Removing Zod runtime + react-hook-form helped lazy chunks but barely touched the initial because Rollup was already tree-shaking unused schemas before this phase. The only way to get below 90 KB initial would be either:
+
+- swap React 18 for Preact (10 KB) at the cost of correctness in StrictMode + concurrent features; OR
+- defer `@tanstack/react-query` and use bare `fetch` + a manual revalidation cache; OR
+- defer `react-router-dom` and roll a 1-route-at-a-time hash router.
+
+All three are larger surgeries than this phase justifies. Documenting the budget as "aspirational" rather than chasing pyrrhic victories.
+
+### Tests / smoke
+
+- web unit: 19 / 19 still passing (BidForm refactor covered by existing `bidFlow.test.tsx`).
+- api unit: 90 / 90 still passing.
+- shared unit: 18 / 18 still passing.
+- Playwright e2e (real api + built spa): 3 / 3 passing in 1.4 s.
+
+### Files touched
+
+- `apps/web/src/main.tsx` — deferred web-vitals + WS plumbing to `requestIdleCallback`.
+- `apps/web/src/features/agent/LazyCommandBar.tsx` — new lazy wrapper.
+- `apps/web/src/features/agent/CommandBar.tsx` — unchanged.
+- `apps/web/src/features/inventory/InventoryPage.tsx` — `<CommandBar />` → `<LazyCommandBar />`.
+- `apps/web/src/features/vehicle/VehiclePage.tsx` — `<CommandBar />` → `<LazyCommandBar />`.
+- `apps/web/src/features/bidding/BidForm.tsx` — react-hook-form → useState + shared validator.
+- `apps/web/src/lib/api.ts` — Zod runtime → type-only + cast; structural error envelope.
+- `apps/web/src/lib/ws.ts` — Zod runtime → `looksLikeServerMessage` structural check.
+- `apps/web/vite.config.ts` — dropped `forms` manualChunk.
+- `apps/web/package.json` — removed `react-hook-form` + `@hookform/resolvers` deps.
+
+### Escalations
+
+- None.

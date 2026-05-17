@@ -21,18 +21,11 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2022',
       cssCodeSplit: false,
-      rollupOptions: {
-        output: {
-          // Keep app & most deps in the main chunk; split out only large,
-          // route-isolated deps to keep initial paint lean. react-hook-form
-          // is only needed once the user opens a vehicle detail page.
-          manualChunks(id) {
-            if (id.includes('node_modules/react-hook-form')) return 'forms';
-            if (id.includes('node_modules/@hookform')) return 'forms';
-            return undefined;
-          },
-        },
-      },
+      // No manualChunks: natural code-splitting via React.lazy in
+      // app/routes.tsx + IntelTabs already isolates the per-route deps
+      // (react-virtual rides inside the InventoryPage chunk; the agent
+      // command bar rides in its own LazyCommandBar chunk). web-vitals
+      // is loaded after first paint from main.tsx.
     },
     test: {
       environment: 'jsdom',

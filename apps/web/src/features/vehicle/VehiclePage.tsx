@@ -3,10 +3,9 @@ import { ChevronLeft } from 'lucide-react';
 import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-
 import { agentClient } from '../agent/agentClient';
-import { CommandBar } from '../agent/CommandBar';
 import { ConfirmAction } from '../agent/ConfirmAction';
+import { LazyCommandBar } from '../agent/LazyCommandBar';
 import { RiskBanner } from '../agent/RiskBanner';
 import { BidPanel } from '../bidding/BidPanel';
 
@@ -29,7 +28,11 @@ export function VehiclePage() {
   const id = params.id ?? '';
   const navigate = useNavigate();
 
-  const { data: vehicle, isLoading, isError } = useQuery({
+  const {
+    data: vehicle,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: queryKeys.vehicle(id),
     queryFn: () => api.getVehicle(id),
     enabled: id.length > 0,
@@ -163,7 +166,7 @@ export function VehiclePage() {
         <BidPanel vehicle={vehicle} compact />
       </div>
 
-      <CommandBar vehicleId={vehicle.id} />
+      <LazyCommandBar vehicleId={vehicle.id} />
       <ConfirmAction />
     </div>
   );
