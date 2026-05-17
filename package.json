@@ -13,6 +13,7 @@
     "build": "npm run build -w @block/shared && npm run build -w @block/api && npm run build -w @block/web",
     "build:web-static": "VITE_USE_MSW=1 npm run build -w @block/web",
     "start": "npm run start -w @block/api",
+    "pretest": "rm -rf apps/api/.data",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

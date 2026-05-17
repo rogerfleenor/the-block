@@ -17,7 +17,8 @@
     "vite.config.ts",
     "vitest.config.ts",
     "tailwind.config.ts",
-    "postcss.config.cjs"
+    "postcss.config.cjs",
+    "../../data/**/*.json"
   ],
   "exclude": ["dist", "node_modules"],
   "references": [{ "path": "../../packages/shared" }]
