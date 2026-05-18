@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { agentClient } from '../agent/agentClient';
-import { MOBILE_BID_ABOVE_DOCK } from '../agent/dockLayout';
 import { RiskBanner } from '../agent/RiskBanner';
 import { BidPanel } from '../bidding/BidPanel';
 
@@ -71,7 +70,7 @@ export function VehiclePage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
         <Skeleton className="aspect-[4/3] w-full" />
         <Skeleton className="h-72 w-full" />
       </div>
@@ -96,7 +95,7 @@ export function VehiclePage() {
   const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}`;
 
   return (
-    <div className="space-y-4 max-lg:pb-[calc(min(42vh,260px)+7.5rem)] lg:pb-0">
+    <div className="space-y-4 max-xl:pb-[min(60vh,28rem)] xl:pb-0">
       <Link
         to="/"
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
@@ -107,7 +106,7 @@ export function VehiclePage() {
 
       <RiskBanner vehicleId={vehicle.id} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
         <div className="space-y-6">
           <header>
             <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -156,16 +155,9 @@ export function VehiclePage() {
           </section>
         </div>
 
-        <div className="hidden lg:block">
+        <div className="hidden xl:block">
           <BidPanel vehicle={vehicle} />
         </div>
-      </div>
-
-      {/* Sticky bottom bid bar on mobile */}
-      <div
-        className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white p-2 shadow-dock lg:hidden dark:border-slate-800 dark:bg-slate-900 ${MOBILE_BID_ABOVE_DOCK}`}
-      >
-        <BidPanel vehicle={vehicle} compact />
       </div>
     </div>
   );

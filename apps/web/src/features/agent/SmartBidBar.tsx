@@ -5,13 +5,15 @@ import { agentClient } from './agentClient';
 
 import type { AgentFact } from '@block/shared';
 
-import { formatCurrency } from '@/lib/format';
+import { formatCompactCurrency, formatCurrency } from '@/lib/format';
 import { useAgentStore } from '@/state/agentStore';
 import { Tooltip } from '@/ui/Tooltip';
 
 interface SmartBidBarProps {
   vehicleId: string;
   onPrefill?: (amount: number) => void;
+  /** Tighter pill for the fixed mobile bid bar. */
+  compact?: boolean;
 }
 
 const RECOMMENDATION_RE = /\$([\d,]+)/;
@@ -20,7 +22,7 @@ const RECOMMENDATION_RE = /\$([\d,]+)/;
  * `✦ AI Max Bid $X` pill. Pulls from cached agent facts; clicking prefills
  * the bid input. Tooltip shows rationale + sources.
  */
-export function SmartBidBar({ vehicleId, onPrefill }: SmartBidBarProps) {
+export function SmartBidBar({ vehicleId, onPrefill, compact = false }: SmartBidBarProps) {
   const facts = useAgentStore((s) => s.factsByVehicle[vehicleId]);
   const setFacts = useAgentStore((s) => s.setFacts);
   const [loading, setLoading] = useState(false);
@@ -69,10 +71,20 @@ export function SmartBidBar({ vehicleId, onPrefill }: SmartBidBarProps) {
         onClick={() => {
           if (amount && onPrefill) onPrefill(amount);
         }}
-        className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent hover:bg-accent/20"
+        className={
+          compact
+            ? 'inline-flex max-w-full items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold leading-tight text-accent hover:bg-accent/20'
+            : 'inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent hover:bg-accent/20'
+        }
       >
-        <Sparkles size={12} aria-hidden="true" />
-        {amount ? `AI Max Bid ${formatCurrency(amount)}` : loading ? 'AI Max Bid …' : 'AI Max Bid'}
+        <Sparkles size={compact ? 10 : 12} aria-hidden="true" />
+        {amount
+          ? compact
+            ? `AI Max ${formatCompactCurrency(amount)}`
+            : `AI Max Bid ${formatCurrency(amount)}`
+          : loading
+            ? 'AI Max Bid …'
+            : 'AI Max Bid'}
       </button>
     </Tooltip>
   );

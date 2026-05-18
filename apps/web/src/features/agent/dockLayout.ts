@@ -1,10 +1,8 @@
 /**
- * Tailwind classes shared by the fixed AuctionAgent dock and anything that
- * must clear it (e.g. the mobile bid bar on vehicle detail).
- *
- * Keep `max-h` and `bottom` offsets in sync so UI never overlaps.
+ * Max height for the AuctionAgent panel (scrolls internally). The vehicle
+ * bid strip sits above this in the same fixed dock on narrow viewports.
  */
 export const AGENT_DOCK_MAX_H = 'max-h-[min(42vh,260px)]';
 
-/** Mobile bid bar sits above the dock (lg: bid is in sidebar, not fixed). */
-export const MOBILE_BID_ABOVE_DOCK = 'max-lg:bottom-[min(42vh,260px)]';
+/** Entire fixed dock (bid strip + agent) should not eat the whole screen. */
+export const VEHICLE_DOCK_MAX_H = 'max-h-[min(58vh,400px)]';
