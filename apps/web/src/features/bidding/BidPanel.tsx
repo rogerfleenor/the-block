@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 
-
 import { SmartBidBar } from '../agent/SmartBidBar';
 
 import { BidForm } from './BidForm';
@@ -36,7 +35,8 @@ export function BidPanel({ vehicle, compact = false }: BidPanelProps) {
   }, [lastToast, clearToast]);
 
   const optimisticBid = optimistic?.amount;
-  const displayedCurrent = optimisticBid && optimisticBid > vehicle.current_bid ? optimisticBid : vehicle.current_bid;
+  const displayedCurrent =
+    optimisticBid && optimisticBid > vehicle.current_bid ? optimisticBid : vehicle.current_bid;
 
   const endsAt = new Date(new Date(vehicle.auction_start).getTime() + 4 * 60 * 60 * 1000);
   const countdown = formatCountdown(endsAt, new Date(now));
@@ -45,32 +45,34 @@ export function BidPanel({ vehicle, compact = false }: BidPanelProps) {
     <aside
       className={
         compact
-          ? 'space-y-2 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900'
-          : 'sticky top-4 space-y-4 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900'
+          ? 'space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-market dark:border-slate-800 dark:bg-slate-900'
+          : 'sticky top-4 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-market dark:border-slate-800 dark:bg-slate-900'
       }
       aria-labelledby={`bid-panel-${vehicle.id}`}
     >
       <header className="space-y-1">
-        <p id={`bid-panel-${vehicle.id}`} className="text-xs uppercase tracking-wide text-neutral-500">
+        <p
+          id={`bid-panel-${vehicle.id}`}
+          className="text-xs uppercase tracking-wide text-slate-500"
+        >
           Current bid
         </p>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-semibold tabular-nums">{formatCurrency(displayedCurrent)}</span>
+          <span className="text-3xl font-semibold tabular-nums">
+            {formatCurrency(displayedCurrent)}
+          </span>
           {optimisticBid ? (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
               pending
             </span>
           ) : null}
         </div>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-slate-500">
           {vehicle.bid_count} {vehicle.bid_count === 1 ? 'bid' : 'bids'} · Ends in {countdown}
         </p>
         <div className="flex flex-wrap gap-1.5 pt-1">
           <ReserveBadge reserve={vehicle.reserve_price} currentBid={displayedCurrent} />
-          <SmartBidBar
-            vehicleId={vehicle.id}
-            onPrefill={(amt) => setPrefill(amt)}
-          />
+          <SmartBidBar vehicleId={vehicle.id} onPrefill={(amt) => setPrefill(amt)} />
         </div>
       </header>
 
@@ -91,7 +93,7 @@ export function BidPanel({ vehicle, compact = false }: BidPanelProps) {
 
       {!compact ? (
         <section className="space-y-1.5">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Recent bids</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500">Recent bids</p>
           <BidHistory vehicleId={vehicle.id} />
         </section>
       ) : null}

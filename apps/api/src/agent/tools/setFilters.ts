@@ -7,7 +7,8 @@ const OutputSchema = z.object({ applied: z.boolean() });
 
 export const setFiltersTool: ToolDefinition<SetFiltersToolInput, z.infer<typeof OutputSchema>> = {
   name: 'setFilters',
-  description: 'Emit a setFilters action so the FE can update the inventory filter sidebar.',
+  description:
+    'Emit setFilters so the UI updates URL + inventory. Filters mirror GET /api/vehicles query params (all vehicle fields).',
   inputSchema: SetFiltersToolInputSchema,
   outputSchema: OutputSchema,
   run: async ({ input }) => ({

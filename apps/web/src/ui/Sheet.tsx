@@ -54,19 +54,17 @@ export function Sheet({
       />
       <div
         className={cn(
-          'relative z-10 flex max-h-full flex-col overflow-hidden bg-white shadow-xl dark:bg-neutral-900',
-          side === 'right'
-            ? 'h-full w-full max-w-md sm:rounded-l-2xl'
-            : 'w-full rounded-t-2xl',
+          'relative z-10 flex max-h-full flex-col overflow-hidden bg-white shadow-xl dark:bg-slate-900',
+          side === 'right' ? 'h-full w-full max-w-md sm:rounded-l-2xl' : 'w-full rounded-t-2xl',
           className,
         )}
       >
-        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <h2 className="text-sm font-semibold">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             aria-label="Close"
           >
             <X size={16} aria-hidden="true" />

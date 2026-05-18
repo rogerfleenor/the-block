@@ -1,6 +1,5 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { measureElement, useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
-
 
 import { VehicleCard } from './VehicleCard';
 
@@ -13,22 +12,31 @@ interface InventoryGridProps {
 }
 
 const ROW_GAP = 16;
-const CARD_HEIGHT = 320;
+/** Initial row height guess until `measureElement` runs (image + meta + gap). */
+const EST_ROW_HEIGHT = 420;
+
+function columnCountForWidth(w: number) {
+  if (w < 640) return 1;
+  if (w < 900) return 2;
+  if (w < 1200) return 3;
+  return 4;
+}
 
 /**
- * Virtualized N-column grid (3 desktop, 2 tablet, 1 mobile). Rows are virtualized;
- * inside a row, cards stretch via CSS grid so the virtualizer only manages rows.
+ * Virtualized grid (4 columns on wide desktop, down to 1 on mobile). Row heights are
+ * measured so cards never overlap when content is taller than the estimate.
  */
 export function InventoryGrid({ items }: InventoryGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const [cols, setCols] = useState(3);
+  const [cols, setCols] = useState(() =>
+    typeof window !== 'undefined' ? columnCountForWidth(window.innerWidth) : 3,
+  );
   const [flashTicks, setFlashTicks] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const apply = () => {
       if (typeof window === 'undefined') return;
-      const w = window.innerWidth;
-      setCols(w >= 1280 ? 3 : w >= 768 ? 2 : 1);
+      setCols(columnCountForWidth(window.innerWidth));
     };
     apply();
     window.addEventListener('resize', apply);
@@ -59,8 +67,9 @@ export function InventoryGrid({ items }: InventoryGridProps) {
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => CARD_HEIGHT + ROW_GAP,
+    estimateSize: () => EST_ROW_HEIGHT + ROW_GAP,
     overscan: 4,
+    measureElement,
   });
 
   if (items.length === 0) {
@@ -80,6 +89,8 @@ export function InventoryGrid({ items }: InventoryGridProps) {
           return (
             <div
               key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={rowVirtualizer.measureElement}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -90,7 +101,7 @@ export function InventoryGrid({ items }: InventoryGridProps) {
               }}
             >
               <div
-                className="grid gap-4"
+                className="grid min-w-0 gap-3 sm:gap-4"
                 style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
               >
                 {row.map((v) => (

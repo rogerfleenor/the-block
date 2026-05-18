@@ -1,6 +1,7 @@
 import {
   SearchInventoryToolInputSchema,
   SearchInventoryToolOutputSchema,
+  VehicleFiltersSchema,
   VehicleQuerySchema,
   type SearchInventoryToolInput,
   type SearchInventoryToolOutput,
@@ -14,7 +15,8 @@ export const searchInventoryTool: ToolDefinition<
   SearchInventoryToolOutput
 > = {
   name: 'searchInventory',
-  description: 'Search the inventory by query/filters/sort. Returns matched vehicle ids.',
+  description:
+    'Search inventory using free-text q (matches any vehicle field) plus structured filters (make, model substring, drivetrain, fuel, VIN, price, year, odometer, buy-now, etc.). Returns matched ids.',
   inputSchema: SearchInventoryToolInputSchema,
   outputSchema: SearchInventoryToolOutputSchema,
   run: async ({ input }) => {
@@ -25,6 +27,10 @@ export const searchInventoryTool: ToolDefinition<
       ...input.filters,
     });
     const page = listVehicles(query);
+    const appliedFilters = VehicleFiltersSchema.parse({
+      ...input.filters,
+      ...(input.q ? { q: input.q } : {}),
+    });
     const output: SearchInventoryToolOutput = {
       matchedIds: page.items.map((v) => v.id),
       total: page.total,
@@ -34,7 +40,7 @@ export const searchInventoryTool: ToolDefinition<
       actions: [
         {
           kind: 'setFilters',
-          filters: input.filters ?? {},
+          filters: appliedFilters,
         },
       ],
     };

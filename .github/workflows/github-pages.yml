@@ -1,0 +1,57 @@
+# Static demo: MSW mocks all /api traffic in the browser (no Node API on Pages).
+# Repo → Settings → Pages: Source = GitHub Actions.
+# If the git root is a parent monorepo, move this workflow there and set
+# `defaults.run.working-directory` (or override VITE_BASE to your real path).
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build shared + static web (MSW)
+        run: npm run build -w @block/shared && npm run build -w @block/web
+        env:
+          VITE_USE_MSW: '1'
+          VITE_BASE: /${{ github.event.repository.name }}/
+
+      - name: SPA fallback for direct URLs
+        run: cp apps/web/dist/index.html apps/web/dist/404.html
+
+      - name: Disable Jekyll (Vite may emit paths Jekyll would ignore)
+        run: touch apps/web/dist/.nojekyll
+
+      - uses: actions/configure-pages@v4
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -8,7 +8,6 @@ import { ConfirmAction } from '@/features/agent/ConfirmAction';
 import { useAgentStore } from '@/state/agentStore';
 import { useBidStore } from '@/state/bidStore';
 
-
 function makeSuggestion(): AgentSuggestion {
   return {
     id: `sug_${Math.random().toString(36).slice(2, 8)}`,
@@ -24,7 +23,7 @@ function makeSuggestion(): AgentSuggestion {
 
 describe('agentStore + ConfirmAction', () => {
   beforeEach(() => {
-    useAgentStore.setState({ active: null, open: false });
+    useAgentStore.setState({ active: null, focusNonce: 0 });
     useBidStore.setState({ optimistic: {}, lastToast: null });
     vi.useRealTimers();
   });

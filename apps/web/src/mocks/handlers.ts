@@ -7,14 +7,18 @@ import {
   PlaceBidResultSchema,
   ProviderListResponseSchema,
   ROUTES,
+  VehicleFacetsSchema,
   VehicleIntelSchema,
   VehicleListResponseSchema,
   VehicleQuerySchema,
   VehicleSchema,
+  buildPurchaseAssessment,
   minNextBid,
+  PurchaseAssessmentResponseSchema,
   reserveMet,
   seededRng,
   validateBidAmount,
+  vehicleMatchesQuery,
   vinSeed,
 } from '@block/shared';
 import { http, HttpResponse } from 'msw';
@@ -31,6 +35,9 @@ import type {
   ProviderResult,
   Vehicle,
 } from '@block/shared';
+
+import { withPublicPath } from '@/lib/publicPath';
+
 
 interface BidLedgerEntry {
   bid: Bid;
@@ -54,7 +61,11 @@ function bidIdSeed(): string {
   return `bid_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
 }
 
-function errorEnvelope(code: BidErrorCode | 'INVALID_INPUT' | 'NOT_FOUND', message: string, status: number) {
+function errorEnvelope(
+  code: BidErrorCode | 'INVALID_INPUT' | 'NOT_FOUND',
+  message: string,
+  status: number,
+) {
   return HttpResponse.json(
     { code, message, requestId: `mock_${Math.random().toString(36).slice(2, 8)}` },
     { status },
@@ -74,26 +85,10 @@ function applySort(items: Vehicle[], sort: string): Vehicle[] {
       return copy.sort((a, b) => b.bid_count - a.bid_count);
     case 'ending_soon':
     default:
-      return copy.sort((a, b) => new Date(a.auction_start).getTime() - new Date(b.auction_start).getTime());
+      return copy.sort(
+        (a, b) => new Date(a.auction_start).getTime() - new Date(b.auction_start).getTime(),
+      );
   }
-}
-
-function applyFilters(items: Vehicle[], q: ReturnType<typeof VehicleQuerySchema.parse>): Vehicle[] {
-  return items.filter((v) => {
-    if (q.make && v.make.toLowerCase() !== q.make.toLowerCase()) return false;
-    if (q.body && v.body_style.toLowerCase() !== q.body.toLowerCase()) return false;
-    if (q.province && v.province.toLowerCase() !== q.province.toLowerCase()) return false;
-    if (q.title && v.title_status.toLowerCase() !== q.title.toLowerCase()) return false;
-    if (q.minPrice !== undefined && v.current_bid < q.minPrice) return false;
-    if (q.maxPrice !== undefined && v.current_bid > q.maxPrice) return false;
-    if (q.minGrade !== undefined && v.condition_grade < q.minGrade) return false;
-    if (q.q) {
-      const needle = q.q.toLowerCase();
-      const hay = `${v.year} ${v.make} ${v.model} ${v.trim} ${v.vin} ${v.lot}`.toLowerCase();
-      if (!hay.includes(needle)) return false;
-    }
-    return true;
-  });
 }
 
 function liveVehicle(v: Vehicle): Vehicle {
@@ -103,11 +98,14 @@ function liveVehicle(v: Vehicle): Vehicle {
   return { ...v, current_bid: last.amount, bid_count: v.bid_count + ledger.length };
 }
 
-function buildIntel(v: Vehicle, categories?: string[]): ReturnType<typeof VehicleIntelSchema.parse> {
+function buildIntel(
+  v: Vehicle,
+  categories?: string[],
+): ReturnType<typeof VehicleIntelSchema.parse> {
   const allowed = categories && categories.length > 0 ? new Set(categories) : null;
-  const results: ProviderResult[] = PROVIDERS.filter((p) => !allowed || allowed.has(p.meta.category)).map(
-    (p) => p.build(v),
-  );
+  const results: ProviderResult[] = PROVIDERS.filter(
+    (p) => !allowed || allowed.has(p.meta.category),
+  ).map((p) => p.build(v));
   return {
     vehicleId: v.id,
     vin: v.vin,
@@ -131,9 +129,10 @@ function factsFor(v: Vehicle): AgentFact[] {
         id: `fact_val_${v.id}`,
         vehicleId: v.id,
         kind: 'valuation_delta',
-        text: delta > 0
-          ? `Below MMR by $${Math.round(delta).toLocaleString()}`
-          : `Above MMR by $${Math.round(-delta).toLocaleString()}`,
+        text:
+          delta > 0
+            ? `Below MMR by $${Math.round(delta).toLocaleString()}`
+            : `Above MMR by $${Math.round(-delta).toLocaleString()}`,
         severity: delta > 0 ? 'low' : 'medium',
         sources: ['Manheim MMR', 'KBB'],
         ts: new Date().toISOString(),
@@ -147,7 +146,11 @@ function factsFor(v: Vehicle): AgentFact[] {
       id: `fact_reserve_${v.id}`,
       vehicleId: v.id,
       kind: 'reserve_likelihood',
-      text: reserveMet(v, v.current_bid) ? 'Reserve met' : likely ? 'Reserve likely met soon' : 'Reserve not yet met',
+      text: reserveMet(v, v.current_bid)
+        ? 'Reserve met'
+        : likely
+          ? 'Reserve likely met soon'
+          : 'Reserve not yet met',
       severity: 'low',
       sources: ['Auction telemetry'],
       ts: new Date().toISOString(),
@@ -159,9 +162,10 @@ function factsFor(v: Vehicle): AgentFact[] {
       id: `fact_risk_${v.id}`,
       vehicleId: v.id,
       kind: 'risk',
-      text: v.title_status !== 'clean'
-        ? `Title status: ${v.title_status}`
-        : `${v.damage_notes.length} damage notes — inspect carefully`,
+      text:
+        v.title_status !== 'clean'
+          ? `Title status: ${v.title_status}`
+          : `${v.damage_notes.length} damage notes — inspect carefully`,
       severity: 'high',
       sources: ['CARFAX', 'AutoCheck'],
       detail: v.damage_notes.join('; ') || undefined,
@@ -172,7 +176,10 @@ function factsFor(v: Vehicle): AgentFact[] {
   const comps = PROVIDERS.find((p) => p.meta.name === 'marketcheck')!.build(v);
   if (comps.status === 'ok') {
     const data = comps.data as { comps: Array<{ price: number }>; medianPrice: number };
-    const top = data.comps.slice(0, 2).map((c) => `$${(c.price / 1000).toFixed(1)}k`).join(' · ');
+    const top = data.comps
+      .slice(0, 2)
+      .map((c) => `$${(c.price / 1000).toFixed(1)}k`)
+      .join(' · ');
     facts.push({
       id: `fact_comps_${v.id}`,
       vehicleId: v.id,
@@ -203,11 +210,15 @@ function factsFor(v: Vehicle): AgentFact[] {
 function recommendMaxBidValue(v: Vehicle): number {
   const kbb = PROVIDERS.find((p) => p.meta.name === 'kbb')!.build(v);
   const mmr = PROVIDERS.find((p) => p.meta.name === 'manheim')!.build(v);
-  const retailMid = kbb.status === 'ok' ? (kbb.data as { retail: { mid: number } }).retail.mid : v.starting_bid * 1.2;
-  const mmrValue = mmr.status === 'ok' ? (mmr.data as { mmrValue: number }).mmrValue : v.starting_bid * 1.1;
+  const retailMid =
+    kbb.status === 'ok'
+      ? (kbb.data as { retail: { mid: number } }).retail.mid
+      : v.starting_bid * 1.2;
+  const mmrValue =
+    mmr.status === 'ok' ? (mmr.data as { mmrValue: number }).mmrValue : v.starting_bid * 1.1;
   const conditionAdj = 0.85 + (v.condition_grade / 5) * 0.15;
   const bidderPressure = Math.min(0.08, v.bid_count * 0.005);
-  const cap = Math.round((retailMid * 0.95 + mmrValue) / 2 * (conditionAdj - bidderPressure));
+  const cap = Math.round(((retailMid * 0.95 + mmrValue) / 2) * (conditionAdj - bidderPressure));
   return Math.max(cap, minNextBid(v));
 }
 
@@ -314,15 +325,37 @@ function routeAgentUtterance(
 }
 
 export const handlers = [
-  http.get(ROUTES.health, () =>
+  http.get(withPublicPath(ROUTES.health), () =>
     HttpResponse.json({ ok: true, ts: new Date().toISOString() }),
   ),
-  http.post(ROUTES.vitals, async ({ request }) => {
+  http.post(withPublicPath(ROUTES.vitals), async ({ request }) => {
     await request.json().catch(() => null);
     return HttpResponse.json({ ok: true });
   }),
 
-  http.get(ROUTES.vehicles, ({ request }) => {
+  http.get(withPublicPath(ROUTES.vehicleFacets), () => {
+    const vs = allVehicles();
+    const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b));
+    return HttpResponse.json(
+      VehicleFacetsSchema.parse({
+        makes: uniq(vs.map((v) => v.make)),
+        models: uniq(vs.map((v) => v.model)),
+        trims: uniq(vs.map((v) => v.trim)),
+        bodyStyles: uniq(vs.map((v) => v.body_style)),
+        provinces: uniq(vs.map((v) => v.province)),
+        cities: uniq(vs.map((v) => v.city)),
+        titleStatuses: uniq(vs.map((v) => v.title_status)),
+        transmissions: uniq(vs.map((v) => v.transmission)),
+        drivetrains: uniq(vs.map((v) => v.drivetrain)),
+        fuelTypes: uniq(vs.map((v) => v.fuel_type)),
+        exteriorColors: uniq(vs.map((v) => v.exterior_color)),
+        interiorColors: uniq(vs.map((v) => v.interior_color)),
+        dealerships: uniq(vs.map((v) => v.selling_dealership)),
+      }),
+    );
+  }),
+
+  http.get(withPublicPath(ROUTES.vehicles), ({ request }) => {
     const url = new URL(request.url);
     const raw: Record<string, string> = {};
     for (const [k, v] of url.searchParams.entries()) {
@@ -334,7 +367,7 @@ export const handlers = [
     }
     const q = parsed.data;
     const all = allVehicles().map(liveVehicle);
-    const filtered = applyFilters(all, q);
+    const filtered = all.filter((v) => vehicleMatchesQuery(v, q));
     const sorted = applySort(filtered, q.sort);
     const cursorIdx = q.cursor ? Number(q.cursor) || 0 : 0;
     const slice = sorted.slice(cursorIdx, cursorIdx + q.limit);
@@ -347,19 +380,19 @@ export const handlers = [
     return HttpResponse.json(response);
   }),
 
-  http.get(ROUTES.vehicleById(':id'), ({ params }) => {
+  http.get(withPublicPath(ROUTES.vehicleById(':id')), ({ params }) => {
     const v = getVehicleById(String(params.id));
     if (!v) return errorEnvelope('NOT_FOUND', 'Vehicle not found', 404);
     return HttpResponse.json(VehicleSchema.parse(liveVehicle(v)));
   }),
 
-  http.get(ROUTES.bids(':id'), ({ params }) => {
+  http.get(withPublicPath(ROUTES.bids(':id')), ({ params }) => {
     const ledger = getLedger(String(params.id));
     const response = BidHistoryResponseSchema.parse({ bids: ledger.map((e) => e.bid) });
     return HttpResponse.json(response);
   }),
 
-  http.post(ROUTES.bids(':id'), async ({ params, request }) => {
+  http.post(withPublicPath(ROUTES.bids(':id')), async ({ params, request }) => {
     const id = String(params.id);
     const v = getVehicleById(id);
     if (!v) return errorEnvelope('VEHICLE_NOT_FOUND', 'Vehicle not found', 404);
@@ -397,15 +430,20 @@ export const handlers = [
     return HttpResponse.json(result);
   }),
 
-  http.get(ROUTES.intel(':id'), ({ params, request }) => {
+  http.get(withPublicPath(ROUTES.intel(':id')), ({ params, request }) => {
     const v = getVehicleById(String(params.id));
     if (!v) return errorEnvelope('NOT_FOUND', 'Vehicle not found', 404);
     const cats = new URL(request.url).searchParams.get('categories');
-    const list = cats ? cats.split(',').map((c) => c.trim()).filter(Boolean) : undefined;
+    const list = cats
+      ? cats
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean)
+      : undefined;
     return HttpResponse.json(VehicleIntelSchema.parse(buildIntel(liveVehicle(v), list)));
   }),
 
-  http.get(ROUTES.intelByProvider(':id', ':provider'), ({ params }) => {
+  http.get(withPublicPath(ROUTES.intelByProvider(':id', ':provider')), ({ params }) => {
     const v = getVehicleById(String(params.id));
     if (!v) return errorEnvelope('NOT_FOUND', 'Vehicle not found', 404);
     const provider = findProvider(String(params.provider));
@@ -413,11 +451,13 @@ export const handlers = [
     return HttpResponse.json(provider.build(liveVehicle(v)));
   }),
 
-  http.get(ROUTES.providers, () =>
-    HttpResponse.json(ProviderListResponseSchema.parse({ providers: PROVIDERS.map((p) => p.meta) })),
+  http.get(withPublicPath(ROUTES.providers), () =>
+    HttpResponse.json(
+      ProviderListResponseSchema.parse({ providers: PROVIDERS.map((p) => p.meta) }),
+    ),
   ),
 
-  http.post(ROUTES.agentInvoke, async ({ request }) => {
+  http.post(withPublicPath(ROUTES.agentInvoke), async ({ request }) => {
     let body: unknown;
     try {
       body = await request.json();
@@ -432,13 +472,31 @@ export const handlers = [
     return HttpResponse.json(AgentInvokeResponseSchema.parse(out));
   }),
 
-  http.get(ROUTES.agentFacts(':id'), ({ params }) => {
+  http.get(withPublicPath(ROUTES.agentFacts(':id')), ({ params }) => {
     const v = getVehicleById(String(params.id));
     if (!v) return errorEnvelope('NOT_FOUND', 'Vehicle not found', 404);
     const facts = factsFor(liveVehicle(v));
     return HttpResponse.json(
-      AgentFactsResponseSchema.parse({ vehicleId: v.id, facts, fetchedAt: new Date().toISOString() }),
+      AgentFactsResponseSchema.parse({
+        vehicleId: v.id,
+        facts,
+        fetchedAt: new Date().toISOString(),
+      }),
     );
+  }),
+
+  http.get(withPublicPath(ROUTES.agentPurchaseAssessment(':id')), ({ params }) => {
+    const v = getVehicleById(String(params.id));
+    if (!v) return errorEnvelope('NOT_FOUND', 'Vehicle not found', 404);
+    const lv = liveVehicle(v);
+    const facts = factsFor(lv);
+    const payload = buildPurchaseAssessment({
+      vehicleId: lv.id,
+      vehicle: lv,
+      facts,
+      recommendedValue: recommendMaxBidValue(lv),
+    });
+    return HttpResponse.json(PurchaseAssessmentResponseSchema.parse(payload));
   }),
 ];
 

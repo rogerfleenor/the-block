@@ -1,9 +1,12 @@
 import { readFile } from 'node:fs/promises';
 
 import {
+  VehicleFacetsSchema,
   VehicleListItemSchema,
   VehicleSchema,
+  vehicleMatchesQuery,
   type Vehicle,
+  type VehicleFacets,
   type VehicleListItem,
   type VehicleQuery,
 } from '@block/shared';
@@ -112,32 +115,24 @@ function toListItem(v: Vehicle): VehicleListItem {
   return VehicleListItemSchema.parse(trimmed);
 }
 
-function matchesQuery(v: Vehicle, q: VehicleQuery): boolean {
-  if (q.make && v.make.toLowerCase() !== q.make.toLowerCase()) return false;
-  if (q.body && v.body_style.toLowerCase() !== q.body.toLowerCase()) return false;
-  if (q.province && v.province.toLowerCase() !== q.province.toLowerCase()) return false;
-  if (q.title && v.title_status.toLowerCase() !== q.title.toLowerCase()) return false;
-  if (q.minPrice !== undefined && v.current_bid < q.minPrice) return false;
-  if (q.maxPrice !== undefined && v.current_bid > q.maxPrice) return false;
-  if (q.minGrade !== undefined && v.condition_grade < q.minGrade) return false;
-  if (q.q) {
-    const haystack = [
-      v.vin,
-      v.make,
-      v.model,
-      v.trim,
-      v.body_style,
-      v.exterior_color,
-      v.city,
-      v.province,
-      v.lot,
-      v.selling_dealership,
-    ]
-      .join(' ')
-      .toLowerCase();
-    if (!haystack.includes(q.q.toLowerCase())) return false;
-  }
-  return true;
+export function getVehicleFacets(): VehicleFacets {
+  const vs = allVehicles();
+  const uniq = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b));
+  return VehicleFacetsSchema.parse({
+    makes: uniq(vs.map((v) => v.make)),
+    models: uniq(vs.map((v) => v.model)),
+    trims: uniq(vs.map((v) => v.trim)),
+    bodyStyles: uniq(vs.map((v) => v.body_style)),
+    provinces: uniq(vs.map((v) => v.province)),
+    cities: uniq(vs.map((v) => v.city)),
+    titleStatuses: uniq(vs.map((v) => v.title_status)),
+    transmissions: uniq(vs.map((v) => v.transmission)),
+    drivetrains: uniq(vs.map((v) => v.drivetrain)),
+    fuelTypes: uniq(vs.map((v) => v.fuel_type)),
+    exteriorColors: uniq(vs.map((v) => v.exterior_color)),
+    interiorColors: uniq(vs.map((v) => v.interior_color)),
+    dealerships: uniq(vs.map((v) => v.selling_dealership)),
+  });
 }
 
 function sortFn(sort: VehicleQuery['sort']): (a: Vehicle, b: Vehicle) => number {
@@ -152,8 +147,7 @@ function sortFn(sort: VehicleQuery['sort']): (a: Vehicle, b: Vehicle) => number 
       return (a, b) => b.bid_count - a.bid_count || a.id.localeCompare(b.id);
     case 'ending_soon':
     default:
-      return (a, b) =>
-        a.auction_start.localeCompare(b.auction_start) || a.id.localeCompare(b.id);
+      return (a, b) => a.auction_start.localeCompare(b.auction_start) || a.id.localeCompare(b.id);
   }
 }
 
@@ -169,7 +163,7 @@ interface PageResult {
  * see that id again in the sorted set, then take `limit`.
  */
 export function listVehicles(query: VehicleQuery): PageResult {
-  const filtered = allVehicles().filter((v) => matchesQuery(v, query));
+  const filtered = allVehicles().filter((v) => vehicleMatchesQuery(v, query));
   const sorted = filtered.sort(sortFn(query.sort));
   const total = sorted.length;
 
@@ -183,8 +177,7 @@ export function listVehicles(query: VehicleQuery): PageResult {
   const slice = sorted.slice(startIdx, startIdx + query.limit);
   const items = slice.map(toListItem);
   const last = slice.at(-1);
-  const nextCursor =
-    startIdx + query.limit < total && last ? encodeCursor(last.id) : null;
+  const nextCursor = startIdx + query.limit < total && last ? encodeCursor(last.id) : null;
 
   return { items, total, nextCursor };
 }

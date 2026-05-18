@@ -33,7 +33,7 @@ export function Tooltip({
           role="tooltip"
           id={id}
           className={cn(
-            'pointer-events-none absolute left-1/2 z-30 min-w-[14rem] -translate-x-1/2 whitespace-normal rounded-lg border border-neutral-200 bg-white p-2 text-xs text-neutral-700 shadow-lg dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200',
+            'pointer-events-none absolute left-1/2 z-30 min-w-[14rem] -translate-x-1/2 whitespace-normal rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
             side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
           )}
         >

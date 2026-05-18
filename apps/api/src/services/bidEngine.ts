@@ -5,6 +5,7 @@ import {
   reserveMet,
   TIMINGS,
   validateBidAmount,
+  VehicleSchema,
   type Bid,
   type Vehicle,
 } from '@block/shared';
@@ -91,7 +92,11 @@ export function getBidHistory(vehicleId: string): Bid[] {
 export function placeBid(args: PlaceBidArgs): PlaceBidOutcome {
   const vehicle = getVehicle(args.vehicleId);
   if (!vehicle) {
-    return { ok: false, code: 'VEHICLE_NOT_FOUND', message: `Vehicle ${args.vehicleId} not found.` };
+    return {
+      ok: false,
+      code: 'VEHICLE_NOT_FOUND',
+      message: `Vehicle ${args.vehicleId} not found.`,
+    };
   }
   const check = validateBidAmount(vehicle, args.amount);
   if (!check.ok) {
@@ -210,9 +215,18 @@ async function loadSnapshot(): Promise<void> {
     const raw = await readFile(STATE_SNAPSHOT, 'utf-8');
     const snap = JSON.parse(raw) as Partial<Snapshot>;
     if (Array.isArray(snap.vehicles)) {
-      for (const v of snap.vehicles) {
+      for (const row of snap.vehicles) {
+        const parsed = VehicleSchema.safeParse(row);
+        if (!parsed.success) continue;
+        const snapVehicle = parsed.data;
+        const seed = getVehicle(snapVehicle.id);
+        // Snapshot stores full rows; catalog fields (e.g. images) must stay
+        // aligned with data/vehicles.json so seed data is not frozen forever.
+        const merged: Vehicle = seed
+          ? { ...seed, current_bid: snapVehicle.current_bid, bid_count: snapVehicle.bid_count }
+          : snapVehicle;
         try {
-          setVehicle(v);
+          setVehicle(merged);
         } catch {
           // ignore corrupt rows; live store wins
         }

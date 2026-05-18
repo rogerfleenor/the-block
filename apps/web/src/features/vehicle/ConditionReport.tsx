@@ -2,7 +2,6 @@ import type { Vehicle } from '@block/shared';
 
 import { formatGrade, gradeDots } from '@/lib/format';
 
-
 interface ConditionReportProps {
   vehicle: Vehicle;
 }
@@ -16,7 +15,7 @@ export function ConditionReport({ vehicle }: ConditionReportProps) {
         </span>
         <span className="font-semibold">{formatGrade(vehicle.condition_grade)} / 5</span>
       </div>
-      <p className="text-sm text-neutral-700 dark:text-neutral-300">{vehicle.condition_report}</p>
+      <p className="text-sm text-slate-700 dark:text-slate-300">{vehicle.condition_report}</p>
     </div>
   );
 }

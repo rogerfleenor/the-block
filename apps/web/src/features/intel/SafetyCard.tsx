@@ -3,7 +3,6 @@ import type { ProviderResult, SafetyIihs, SafetyNcap, SafetyRecalls } from '@blo
 import { Card, CardBody, CardHeader } from '@/ui/Card';
 import { Tag } from '@/ui/Tag';
 
-
 interface SafetyCardProps {
   results: ProviderResult[];
 }
@@ -28,7 +27,10 @@ export function SafetyCard({ results }: SafetyCardProps) {
           <div className="flex flex-wrap gap-1.5">
             {iihs.topSafetyPick ? <Tag tone="success">IIHS Top Safety Pick</Tag> : null}
             {Object.entries(iihs.ratings).map(([k, v]) => (
-              <Tag key={k} tone={v === 'Good' ? 'success' : v === 'Acceptable' ? 'neutral' : 'warn'}>
+              <Tag
+                key={k}
+                tone={v === 'Good' ? 'success' : v === 'Acceptable' ? 'neutral' : 'warn'}
+              >
                 {k}: {v}
               </Tag>
             ))}
@@ -46,7 +48,7 @@ export function SafetyCard({ results }: SafetyCardProps) {
             </ul>
           </div>
         ) : recalls ? (
-          <p className="text-xs text-neutral-500">No open recalls.</p>
+          <p className="text-xs text-slate-500">No open recalls.</p>
         ) : null}
       </CardBody>
     </Card>

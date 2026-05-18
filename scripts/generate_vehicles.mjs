@@ -4,6 +4,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { buildImageUrlsForVehicle } from "./lib/carImagePool.mjs";
+
 function mulberry32(seed) {
   return function next() {
     let t = (seed += 0x6d2b79f5);
@@ -520,9 +522,10 @@ function generateVehicle(index) {
   const { startingBid, reservePrice, buyNowPrice } = estimatePrice(year, make, model, odometerKm, conditionGrade, titleStatus);
   const { currentBid, bidCount } = generateBidState(startingBid, reservePrice, buyNowPrice);
   const imageCount = randInt(3, 6);
+  const id = crypto.randomUUID();
 
   return {
-    id: crypto.randomUUID(),
+    id,
     vin: generateVin(),
     year,
     make,
@@ -546,9 +549,7 @@ function generateVehicle(index) {
     starting_bid: startingBid,
     reserve_price: reservePrice,
     buy_now_price: buyNowPrice,
-    images: Array.from({ length: imageCount }, (_, imageIndex) => (
-      `https://placehold.co/800x600/1a1a2e/eaeaea?text=${year}+${make.replaceAll(" ", "+")}+${model.replaceAll(" ", "+")}+Photo+${imageIndex + 1}`
-    )),
+    images: buildImageUrlsForVehicle(id, imageCount, { year, make, model }),
     selling_dealership: choice(DEALERSHIPS_BY_PROVINCE[province]),
     lot: lotNumberForIndex(index),
     current_bid: currentBid,

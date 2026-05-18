@@ -8,7 +8,6 @@ import { queryKeys } from '@/lib/query';
 import { Card, CardBody } from '@/ui/Card';
 import { Skeleton } from '@/ui/Skeleton';
 
-
 interface CompareStripProps {
   vehicleId: string;
   currentBid: number;
@@ -34,9 +33,7 @@ export function CompareStrip({ vehicleId, currentBid }: CompareStripProps) {
 
   const comps = pickComps(data?.results);
   if (comps.length === 0) {
-    return (
-      <p className="text-sm text-neutral-500">No comparable sales available.</p>
-    );
+    return <p className="text-sm text-slate-500">No comparable sales available.</p>;
   }
 
   return (
@@ -44,33 +41,27 @@ export function CompareStrip({ vehicleId, currentBid }: CompareStripProps) {
       {comps.slice(0, 3).map((c, idx) => {
         const delta = c.price - currentBid;
         const deltaLabel =
-          delta === 0
-            ? '—'
-            : `${delta > 0 ? '+' : '−'}${formatCompactCurrency(Math.abs(delta))}`;
+          delta === 0 ? '—' : `${delta > 0 ? '+' : '−'}${formatCompactCurrency(Math.abs(delta))}`;
         return (
-          <Card key={idx} className="border-neutral-200">
+          <Card key={idx} className="border-slate-200">
             <CardBody className="space-y-1">
               <p className="text-sm font-semibold">
                 {c.year} {c.make} {c.model}
               </p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-slate-500">
                 {c.trim ?? '—'} · {formatKm(c.odometerKm ?? 0)}
               </p>
               <p className="text-sm">
                 {formatCompactCurrency(c.price)}{' '}
                 <span
                   className={
-                    delta > 0
-                      ? 'text-emerald-600'
-                      : delta < 0
-                        ? 'text-amber-600'
-                        : 'text-neutral-500'
+                    delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-amber-600' : 'text-slate-500'
                   }
                 >
                   ({deltaLabel})
                 </span>
               </p>
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-slate-500">
                 {c.source} · {c.soldAt}
               </p>
             </CardBody>

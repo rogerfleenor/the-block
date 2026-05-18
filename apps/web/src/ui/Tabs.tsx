@@ -29,7 +29,7 @@ export function Tabs({ tabs, initial, className, onTabChange }: TabsProps) {
       <div
         role="tablist"
         aria-label="Sections"
-        className="-mx-1 flex flex-wrap gap-1 overflow-x-auto border-b border-neutral-200 px-1 pb-1 dark:border-neutral-800"
+        className="-mx-1 flex flex-wrap gap-1 overflow-x-auto border-b border-slate-200 px-1 pb-1 dark:border-slate-800"
       >
         {tabs.map((t) => {
           const isActive = t.id === active;
@@ -49,7 +49,7 @@ export function Tabs({ tabs, initial, className, onTabChange }: TabsProps) {
                 'whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition',
                 isActive
                   ? 'bg-accent/10 text-accent'
-                  : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800',
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
               )}
             >
               {t.label}

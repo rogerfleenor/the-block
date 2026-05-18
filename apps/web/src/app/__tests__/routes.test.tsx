@@ -39,7 +39,7 @@ function renderRoute(path: string) {
 describe('routes smoke', () => {
   it('renders inventory without crashing', async () => {
     renderRoute('/');
-    expect(await screen.findByPlaceholderText(/Search year/i)).toBeInTheDocument();
+    expect(await screen.findByRole('searchbox', { name: /Search inventory/i })).toBeInTheDocument();
   });
 
   it('renders vehicle detail using the first fixture id', async () => {

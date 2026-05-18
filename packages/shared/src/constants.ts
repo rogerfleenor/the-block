@@ -13,6 +13,7 @@ export const ROUTES = {
   health: '/api/health',
   vitals: '/api/health/vitals',
   vehicles: '/api/vehicles',
+  vehicleFacets: '/api/vehicles/facets',
   vehicleById: (id: string) => `/api/vehicles/${id}`,
   bids: (id: string) => `/api/vehicles/${id}/bids`,
   intel: (id: string) => `/api/vehicles/${id}/intel`,
@@ -20,6 +21,7 @@ export const ROUTES = {
   providers: '/api/providers',
   agentInvoke: '/api/agent/invoke',
   agentFacts: (id: string) => `/api/agent/facts/${id}`,
+  agentPurchaseAssessment: (id: string) => `/api/agent/purchase-assessment/${id}`,
 } as const;
 
 export const BID_RULES = {

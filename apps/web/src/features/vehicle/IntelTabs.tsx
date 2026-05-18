@@ -3,6 +3,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 
 import { CompareStrip } from '../agent/CompareStrip';
 import { FactChip } from '../agent/FactChip';
+import { PurchaseAssessmentCard } from '../agent/PurchaseAssessmentCard';
 import { SourcesSheet } from '../intel/SourcesSheet';
 
 import type { AgentFact, ProviderResult } from '@block/shared';
@@ -18,10 +19,18 @@ import { Tabs } from '@/ui/Tabs';
 // infinite re-render loop because each render produces a fresh array reference.
 const EMPTY_FACTS: AgentFact[] = [];
 
-const ValuationCard = lazy(() => import('../intel/ValuationCard').then((m) => ({ default: m.ValuationCard })));
-const HistoryCard = lazy(() => import('../intel/HistoryCard').then((m) => ({ default: m.HistoryCard })));
-const SafetyCard = lazy(() => import('../intel/SafetyCard').then((m) => ({ default: m.SafetyCard })));
-const MarketCard = lazy(() => import('../intel/MarketCard').then((m) => ({ default: m.MarketCard })));
+const ValuationCard = lazy(() =>
+  import('../intel/ValuationCard').then((m) => ({ default: m.ValuationCard })),
+);
+const HistoryCard = lazy(() =>
+  import('../intel/HistoryCard').then((m) => ({ default: m.HistoryCard })),
+);
+const SafetyCard = lazy(() =>
+  import('../intel/SafetyCard').then((m) => ({ default: m.SafetyCard })),
+);
+const MarketCard = lazy(() =>
+  import('../intel/MarketCard').then((m) => ({ default: m.MarketCard })),
+);
 const BuzzCard = lazy(() => import('../intel/BuzzCard').then((m) => ({ default: m.BuzzCard })));
 
 interface IntelTabsProps {
@@ -38,6 +47,7 @@ export function IntelTabs({ vehicleId, currentBid }: IntelTabsProps) {
 
   const facts = useAgentStore((s) => s.factsByVehicle[vehicleId] ?? EMPTY_FACTS);
   const visibleFacts = facts.filter((f) => f.kind !== 'risk').slice(0, 4);
+  const riskFacts = facts.filter((f) => f.kind === 'risk');
   const [sourcesOpen, setSourcesOpen] = useState(false);
 
   const tabs = useMemo(() => {
@@ -59,6 +69,27 @@ export function IntelTabs({ vehicleId, currentBid }: IntelTabsProps) {
             <Suspense fallback={<Skeleton className="h-24 w-full" />}>
               <ValuationCard results={results} />
             </Suspense>
+          </div>
+        ),
+      },
+      {
+        id: 'risk',
+        label: 'Risk',
+        content: (
+          <div className="space-y-4">
+            <PurchaseAssessmentCard vehicleId={vehicleId} />
+            {riskFacts.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Flagged items
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {riskFacts.map((f) => (
+                    <FactChip key={f.id} fact={f} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ),
       },
@@ -108,7 +139,7 @@ export function IntelTabs({ vehicleId, currentBid }: IntelTabsProps) {
         ),
       },
     ];
-  }, [data, currentBid, vehicleId, visibleFacts]);
+  }, [data, currentBid, vehicleId, visibleFacts, riskFacts]);
 
   if (isLoading) {
     return (
@@ -127,7 +158,11 @@ export function IntelTabs({ vehicleId, currentBid }: IntelTabsProps) {
           Sources ({data?.results.length ?? 0}) ▸
         </Button>
       </div>
-      <SourcesSheet open={sourcesOpen} onClose={() => setSourcesOpen(false)} results={data?.results ?? []} />
+      <SourcesSheet
+        open={sourcesOpen}
+        onClose={() => setSourcesOpen(false)}
+        results={data?.results ?? []}
+      />
     </div>
   );
 }

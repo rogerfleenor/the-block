@@ -4,7 +4,6 @@ import { formatKm } from '@/lib/format';
 import { Card, CardBody, CardHeader } from '@/ui/Card';
 import { Tag } from '@/ui/Tag';
 
-
 interface HistoryCardProps {
   results: ProviderResult[];
 }
@@ -17,7 +16,7 @@ export function HistoryCard({ results }: HistoryCardProps) {
     return (
       <Card>
         <CardHeader>History</CardHeader>
-        <CardBody className="text-sm text-neutral-500">No history report available.</CardBody>
+        <CardBody className="text-sm text-slate-500">No history report available.</CardBody>
       </Card>
     );
   }
@@ -38,19 +37,29 @@ export function HistoryCard({ results }: HistoryCardProps) {
         ) : null}
 
         {ac ? (
-          <p className="text-xs text-neutral-500">
-            AutoCheck score <span className="font-semibold text-neutral-900 dark:text-neutral-100">{ac.score}</span>
-            {ac.auctionAnnouncements.length > 0 ? ` · Announcements: ${ac.auctionAnnouncements.join(', ')}` : ''}
+          <p className="text-xs text-slate-500">
+            AutoCheck score{' '}
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{ac.score}</span>
+            {ac.auctionAnnouncements.length > 0
+              ? ` · Announcements: ${ac.auctionAnnouncements.join(', ')}`
+              : ''}
           </p>
         ) : null}
 
         {carfax && carfax.serviceRecords.length > 0 ? (
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Service records</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Service records
+            </p>
             <ul className="mt-1 space-y-1">
               {carfax.serviceRecords.slice(0, 4).map((r, idx) => (
-                <li key={idx} className="flex justify-between text-xs text-neutral-600 dark:text-neutral-400">
-                  <span>{r.date} · {r.type}</span>
+                <li
+                  key={idx}
+                  className="flex justify-between text-xs text-slate-600 dark:text-slate-400"
+                >
+                  <span>
+                    {r.date} · {r.type}
+                  </span>
                   <span>{formatKm(r.odometerKm)}</span>
                 </li>
               ))}

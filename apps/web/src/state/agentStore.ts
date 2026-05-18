@@ -17,7 +17,8 @@ interface AgentState {
   dismissedFacts: Record<string, boolean>;
   /** At most one suggestion in flight at a time. */
   active: ActiveSuggestion | null;
-  open: boolean;
+  /** Incremented so the dock can focus the input (e.g. ⌘K). */
+  focusNonce: number;
 }
 
 interface AgentActions {
@@ -26,9 +27,7 @@ interface AgentActions {
   dismissFact(id: string): void;
   pushSuggestion(s: AgentSuggestion): void;
   clearSuggestion(): void;
-  openCommandBar(): void;
-  closeCommandBar(): void;
-  toggleCommandBar(): void;
+  requestAgentFocus(): void;
 }
 
 export const useAgentStore = create<AgentState & AgentActions>()(
@@ -38,7 +37,7 @@ export const useAgentStore = create<AgentState & AgentActions>()(
       globalFacts: [],
       dismissedFacts: {},
       active: null,
-      open: false,
+      focusNonce: 0,
       setFacts(vehicleId, facts) {
         if (!vehicleId) {
           set({ globalFacts: facts });
@@ -78,14 +77,8 @@ export const useAgentStore = create<AgentState & AgentActions>()(
         if (!current) return;
         set({ active: null });
       },
-      openCommandBar() {
-        set({ open: true });
-      },
-      closeCommandBar() {
-        set({ open: false });
-      },
-      toggleCommandBar() {
-        set((state) => ({ open: !state.open }));
+      requestAgentFocus() {
+        set((s) => ({ focusNonce: s.focusNonce + 1 }));
       },
     }),
     {

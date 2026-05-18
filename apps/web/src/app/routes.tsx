@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
-
 import { AppLayout } from './layout';
 import { NotFound } from './NotFound';
 
@@ -23,30 +22,36 @@ function Fallback() {
   );
 }
 
-export const router = createBrowserRouter([
-  {
-    element: <AppLayout />,
-    children: [
-      {
-        path: '/',
-        element: (
-          <Suspense fallback={<Fallback />}>
-            <InventoryPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: '/v/:id',
-        element: (
-          <Suspense fallback={<Fallback />}>
-            <VehiclePage />
-          </Suspense>
-        ),
-      },
-      { path: '*', element: <NotFound /> },
-    ],
-  },
-]);
+const routerBasename =
+  import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '');
+
+export const router = createBrowserRouter(
+  [
+    {
+      element: <AppLayout />,
+      children: [
+        {
+          path: '/',
+          element: (
+            <Suspense fallback={<Fallback />}>
+              <InventoryPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: '/v/:id',
+          element: (
+            <Suspense fallback={<Fallback />}>
+              <VehiclePage />
+            </Suspense>
+          ),
+        },
+        { path: '*', element: <NotFound /> },
+      ],
+    },
+  ],
+  routerBasename ? { basename: routerBasename } : {},
+);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;

@@ -11,7 +11,8 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @block/api\" \"npm run dev -w @block/web\"",
     "build": "npm run build -w @block/shared && npm run build -w @block/api && npm run build -w @block/web",
-    "build:web-static": "VITE_USE_MSW=1 npm run build -w @block/web",
+    "build:web-static": "npm run build -w @block/shared && VITE_USE_MSW=1 npm run build -w @block/web",
+    "build:github-pages": "npm run build -w @block/shared && VITE_USE_MSW=1 VITE_BASE=${VITE_BASE:-/} npm run build -w @block/web && cp apps/web/dist/index.html apps/web/dist/404.html",
     "start": "npm run start -w @block/api",
     "pretest": "rm -rf apps/api/.data",
     "test": "npm run test --workspaces --if-present",
@@ -22,6 +23,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
+    "screenshots": "CI= playwright test tests/e2e/screenshots.spec.ts",
     "prepare": "husky",
     "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist apps/api/.data"
   },

@@ -1,5 +1,7 @@
 import { ROUTES } from '@block/shared';
 
+import { withPublicPath } from './publicPath';
+
 import type {
   AgentFactsResponse,
   AgentInvokeRequest,
@@ -8,7 +10,9 @@ import type {
   PlaceBidInput,
   PlaceBidResult,
   ProviderListResponse,
+  PurchaseAssessmentResponse,
   Vehicle,
+  VehicleFacets,
   VehicleIntel,
   VehicleListResponse,
   VehicleQuery,
@@ -44,7 +48,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(input: RequestInfo, init: RequestInit): Promise<T> {
-  const res = await fetch(input, {
+  const url = typeof input === 'string' ? withPublicPath(input) : input;
+  const res = await fetch(url, {
     ...init,
     headers: {
       Accept: 'application/json',
@@ -58,7 +63,7 @@ async function request<T>(input: RequestInfo, init: RequestInit): Promise<T> {
     try {
       json = JSON.parse(text);
     } catch (_e) {
-      throw new ApiError(`Invalid JSON from ${String(input)}`, 'INVALID_JSON', res.status);
+      throw new ApiError(`Invalid JSON from ${String(url)}`, 'INVALID_JSON', res.status);
     }
   }
   if (!res.ok) {
@@ -84,6 +89,10 @@ function qs(params: Record<string, string | number | boolean | undefined | null>
 }
 
 export const api = {
+  async listVehicleFacets(): Promise<VehicleFacets> {
+    return request<VehicleFacets>(ROUTES.vehicleFacets, { method: 'GET' });
+  },
+
   async listVehicles(query: Partial<VehicleQuery> = {}): Promise<VehicleListResponse> {
     const url = `${ROUTES.vehicles}${qs(query as Record<string, string | number | undefined>)}`;
     return request<VehicleListResponse>(url, { method: 'GET' });
@@ -118,13 +127,18 @@ export const api = {
   async getAgentFacts(vehicleId: string): Promise<AgentFactsResponse> {
     return request<AgentFactsResponse>(ROUTES.agentFacts(vehicleId), { method: 'GET' });
   },
+  async getPurchaseAssessment(vehicleId: string): Promise<PurchaseAssessmentResponse> {
+    return request<PurchaseAssessmentResponse>(ROUTES.agentPurchaseAssessment(vehicleId), {
+      method: 'GET',
+    });
+  },
   async postVital(metric: {
     name: string;
     value: number;
     id: string;
     navigationType?: string;
   }): Promise<void> {
-    await fetch(ROUTES.vitals, {
+    await fetch(withPublicPath(ROUTES.vitals), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metric),

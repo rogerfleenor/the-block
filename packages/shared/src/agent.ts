@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { VehicleFiltersSchema } from './vehicle.js';
+
 /**
  * AuctionAgent — AI assist surface (NOT a chatbot).
  *
@@ -31,17 +33,7 @@ export type PlaceBidToolInput = z.infer<typeof PlaceBidToolInputSchema>;
 
 export const SearchInventoryToolInputSchema = z.object({
   q: z.string().optional(),
-  filters: z
-    .object({
-      make: z.string().optional(),
-      body: z.string().optional(),
-      province: z.string().optional(),
-      title: z.string().optional(),
-      minPrice: z.number().optional(),
-      maxPrice: z.number().optional(),
-      minGrade: z.number().optional(),
-    })
-    .optional(),
+  filters: VehicleFiltersSchema.optional(),
   sort: z.enum(['ending_soon', 'price_asc', 'price_desc', 'newest', 'most_bids']).optional(),
   limit: z.number().int().min(1).max(50).default(12),
 });
@@ -103,15 +95,7 @@ export const FlagRisksToolInputSchema = z.object({ vehicleId: z.string() });
 export type FlagRisksToolInput = z.infer<typeof FlagRisksToolInputSchema>;
 
 export const SetFiltersToolInputSchema = z.object({
-  filters: z.object({
-    make: z.string().optional(),
-    body: z.string().optional(),
-    province: z.string().optional(),
-    title: z.string().optional(),
-    minPrice: z.number().optional(),
-    maxPrice: z.number().optional(),
-    minGrade: z.number().optional(),
-  }),
+  filters: VehicleFiltersSchema,
 });
 export type SetFiltersToolInput = z.infer<typeof SetFiltersToolInputSchema>;
 

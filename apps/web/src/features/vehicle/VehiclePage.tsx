@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { agentClient } from '../agent/agentClient';
-import { ConfirmAction } from '../agent/ConfirmAction';
-import { LazyCommandBar } from '../agent/LazyCommandBar';
+import { MOBILE_BID_ABOVE_DOCK } from '../agent/dockLayout';
 import { RiskBanner } from '../agent/RiskBanner';
 import { BidPanel } from '../bidding/BidPanel';
 
@@ -61,6 +60,7 @@ export function VehiclePage() {
       if (msg.type === 'bid:updated' && msg.vehicleId === id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.vehicle(id) });
         queryClient.invalidateQueries({ queryKey: queryKeys.bids(id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.purchaseAssessment(id) });
       }
     });
     return () => {
@@ -80,7 +80,7 @@ export function VehiclePage() {
 
   if (isError || !vehicle) {
     return (
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">
         <p className="text-sm font-medium">Vehicle not found.</p>
         <button
           type="button"
@@ -96,10 +96,10 @@ export function VehiclePage() {
   const title = `${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.trim}`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-lg:pb-[calc(min(42vh,260px)+7.5rem)] lg:pb-0">
       <Link
         to="/"
-        className="inline-flex items-center gap-1 text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+        className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
       >
         <ChevronLeft size={14} aria-hidden="true" />
         Back to inventory
@@ -110,11 +110,11 @@ export function VehiclePage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-6">
           <header>
-            <p className="text-xs uppercase tracking-wide text-neutral-500">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
               Lot {vehicle.lot} · {vehicle.city}, {vehicle.province}
             </p>
             <h1 className="text-2xl font-semibold">{title}</h1>
-            <p className="text-xs text-neutral-500">VIN {vehicle.vin}</p>
+            <p className="text-xs text-slate-500">VIN {vehicle.vin}</p>
           </header>
           <Gallery images={vehicle.images} alt={title} />
 
@@ -150,7 +150,7 @@ export function VehiclePage() {
             <h2 id="dealer-heading" className="text-base font-semibold">
               Selling dealership
             </h2>
-            <p className="text-sm text-neutral-700 dark:text-neutral-300">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
               {vehicle.selling_dealership} · {vehicle.city}, {vehicle.province}
             </p>
           </section>
@@ -162,12 +162,11 @@ export function VehiclePage() {
       </div>
 
       {/* Sticky bottom bid bar on mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white p-2 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] lg:hidden dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        className={`fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white p-2 shadow-dock lg:hidden dark:border-slate-800 dark:bg-slate-900 ${MOBILE_BID_ABOVE_DOCK}`}
+      >
         <BidPanel vehicle={vehicle} compact />
       </div>
-
-      <LazyCommandBar vehicleId={vehicle.id} />
-      <ConfirmAction />
     </div>
   );
 }

@@ -12,7 +12,11 @@ describe('agent router (mockLLM intent grammar)', () => {
   const cases = [
     { utterance: 'bid 24800', vehicleId: true, expects: ['placeBid'] },
     { utterance: 'BID $30,000', vehicleId: true, expects: ['placeBid'] },
-    { utterance: 'is this overpriced?', vehicleId: true, expects: ['recommendMaxBid', 'explainPrice'] },
+    {
+      utterance: 'is this overpriced?',
+      vehicleId: true,
+      expects: ['recommendMaxBid', 'explainPrice'],
+    },
     { utterance: 'good deal?', vehicleId: true, expects: ['recommendMaxBid', 'explainPrice'] },
     { utterance: 'any recalls?', vehicleId: true, expects: ['flagRisks'] },
     { utterance: 'title issues?', vehicleId: true, expects: ['flagRisks'] },
@@ -22,7 +26,22 @@ describe('agent router (mockLLM intent grammar)', () => {
       vehicleId: false,
       expects: ['searchInventory', 'setFilters'],
     },
-    { utterance: 'find sedans over 10k', vehicleId: false, expects: ['searchInventory', 'setFilters'] },
+    {
+      utterance: 'find sedans over 10k',
+      vehicleId: false,
+      expects: ['searchInventory', 'setFilters'],
+    },
+    {
+      utterance: 'vin EZ73RMG76X31G4JN4',
+      vehicleId: false,
+      expects: ['searchInventory', 'setFilters'],
+    },
+    {
+      utterance: 'EZ73RMG76X31G4JN4',
+      vehicleId: false,
+      expects: ['searchInventory', 'setFilters'],
+    },
+    { utterance: 'EZ73RMG76X31G4JN4', vehicleId: true, expects: ['searchInventory', 'setFilters'] },
     { utterance: 'tell me about it', vehicleId: true, expects: ['getIntel'] },
     { utterance: 'hello there', vehicleId: false, expects: [] },
   ];

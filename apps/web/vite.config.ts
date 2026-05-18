@@ -6,7 +6,10 @@ import { defineConfig, loadEnv } from 'vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiBase = env.VITE_API_BASE ?? 'http://localhost:4000';
+  /** GitHub Pages project site: set `VITE_BASE=/your-repo-name/` when building. */
+  const base = env.VITE_BASE?.trim() || '/';
   return {
+    base: base.endsWith('/') || base === '/' ? base : `${base}/`,
     plugins: [react()],
     resolve: {
       alias: { '@': path.resolve(__dirname, 'src') },
@@ -23,8 +26,7 @@ export default defineConfig(({ mode }) => {
       cssCodeSplit: false,
       // No manualChunks: natural code-splitting via React.lazy in
       // app/routes.tsx + IntelTabs already isolates the per-route deps
-      // (react-virtual rides inside the InventoryPage chunk; the agent
-      // command bar rides in its own LazyCommandBar chunk). web-vitals
+      // (react-virtual rides inside the InventoryPage chunk). web-vitals
       // is loaded after first paint from main.tsx.
     },
     test: {

@@ -52,7 +52,9 @@ async function start() {
 
   // After first paint: open WS, wire agent listeners, register web-vitals.
   deferIdle(() => {
-    getWsClient();
+    if (import.meta.env.VITE_USE_MSW !== '1') {
+      getWsClient();
+    }
     attachAgentWsListeners();
     void import('./lib/vitals').then((m) => m.reportWebVitals());
   });

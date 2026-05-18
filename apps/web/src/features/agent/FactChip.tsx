@@ -5,7 +5,6 @@ import type { AgentFact } from '@block/shared';
 import { Tag } from '@/ui/Tag';
 import { Tooltip } from '@/ui/Tooltip';
 
-
 interface FactChipProps {
   fact: AgentFact;
 }
@@ -19,7 +18,7 @@ export function FactChip({ fact }: FactChipProps) {
           <p className="font-medium">Why?</p>
           {fact.detail ? <p>{fact.detail}</p> : null}
           {fact.sources.length > 0 ? (
-            <p className="text-[10px] uppercase tracking-wide text-neutral-500">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">
               {fact.sources.join(' · ')}
             </p>
           ) : null}

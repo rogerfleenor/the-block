@@ -9,7 +9,6 @@ import { useAgentStore } from '@/state/agentStore';
 import { useBidStore } from '@/state/bidStore';
 import { Button } from '@/ui/Button';
 
-
 interface ConfirmActionProps {
   onPlaceBid?: (suggestion: AgentSuggestion) => Promise<void>;
   testTickMs?: number;
@@ -99,8 +98,12 @@ export function ConfirmAction({ onPlaceBid, testTickMs = 100 }: ConfirmActionPro
   const secondsLeft = Math.ceil(remainingMs / 1000);
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-40 mx-auto w-full max-w-md px-4" role="alertdialog" aria-live="assertive">
-      <div className="overflow-hidden rounded-2xl border border-accent/40 bg-white shadow-2xl dark:bg-neutral-900">
+    <div
+      className="fixed inset-x-0 bottom-[calc(min(42vh,260px)+0.75rem)] z-50 mx-auto w-full max-w-md px-4"
+      role="alertdialog"
+      aria-live="assertive"
+    >
+      <div className="overflow-hidden rounded-2xl border border-accent/40 bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center gap-2 border-b border-accent/30 bg-accent/10 px-4 py-2 text-xs font-semibold text-accent">
           <Sparkles size={14} aria-hidden="true" />
           AuctionAgent suggestion
@@ -109,19 +112,19 @@ export function ConfirmAction({ onPlaceBid, testTickMs = 100 }: ConfirmActionPro
           <p className="text-sm font-medium">
             Place bid {formatCurrency(active.suggestion.amount)} on this lot
           </p>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             {active.suggestion.rationale}
           </p>
-          <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div
               className="h-full bg-accent transition-[width] duration-100 ease-linear"
               style={{ width: `${progress * 100}%` }}
               aria-hidden="true"
             />
           </div>
-          <p className="text-[11px] text-neutral-500">Auto-cancels in {secondsLeft}s</p>
+          <p className="text-[11px] text-slate-500">Auto-cancels in {secondsLeft}s</p>
         </div>
-        <div className="flex justify-end gap-2 border-t border-neutral-200 p-3 dark:border-neutral-800">
+        <div className="flex justify-end gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
           <Button variant="ghost" size="sm" onClick={() => clearSuggestion()}>
             Cancel
           </Button>

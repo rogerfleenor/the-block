@@ -3,6 +3,7 @@ import {
   PlaceBidInputSchema,
   PlaceBidResultSchema,
   RATE_LIMITS,
+  VehicleFacetsSchema,
   VehicleListResponseSchema,
   VehicleQuerySchema,
   VehicleSchema,
@@ -13,13 +14,23 @@ import { sendError, ApiError, notFound } from '../lib/errors.js';
 import { applyCacheHeaders } from '../lib/etag.js';
 import { logger } from '../lib/logger.js';
 import { getBidHistory, placeBid } from '../services/bidEngine.js';
-import { getVehicle, listVehicles } from '../services/vehicleStore.js';
+import { getVehicle, getVehicleFacets, listVehicles } from '../services/vehicleStore.js';
 
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 
 const IdParam = z.object({ id: z.string() });
 
 export const vehicleRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.get(
+    '/api/vehicles/facets',
+    {
+      schema: {
+        response: { 200: VehicleFacetsSchema },
+      },
+    },
+    async () => getVehicleFacets(),
+  );
+
   app.get(
     '/api/vehicles',
     {
@@ -90,7 +101,10 @@ export const vehicleRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!result.ok) {
         logger().warn({ code: result.code, message: result.message }, 'bid rejected');
         const status = result.code === 'VEHICLE_NOT_FOUND' ? 404 : 400;
-        return sendError(reply, new ApiError({ statusCode: status, code: result.code, message: result.message }));
+        return sendError(
+          reply,
+          new ApiError({ statusCode: status, code: result.code, message: result.message }),
+        );
       }
       return {
         bid: result.bid,

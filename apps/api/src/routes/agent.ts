@@ -2,6 +2,7 @@ import {
   AgentFactsResponseSchema,
   AgentInvokeRequestSchema,
   AgentInvokeResponseSchema,
+  PurchaseAssessmentResponseSchema,
   RATE_LIMITS,
 } from '@block/shared';
 import { z } from 'zod';
@@ -9,6 +10,7 @@ import { z } from 'zod';
 import { getFacts } from '../agent/facts.js';
 import { invokeAgent } from '../agent/llm.js';
 import { appendAgentLog } from '../agent/log.js';
+import { getPurchaseAssessment } from '../agent/purchaseAssessmentService.js';
 import { notFound, sendError } from '../lib/errors.js';
 import { applyCacheHeaders } from '../lib/etag.js';
 import { getRequestId } from '../lib/requestContext.js';
@@ -61,6 +63,22 @@ export const agentRoutes: FastifyPluginAsyncZod = async (app) => {
         facts: computed.facts,
         fetchedAt: new Date().toISOString(),
       };
+      if (applyCacheHeaders(req, reply, payload, 30)) return reply;
+      return payload;
+    },
+  );
+
+  app.get(
+    '/api/agent/purchase-assessment/:vehicleId',
+    {
+      schema: {
+        params: FactsParam,
+        response: { 200: PurchaseAssessmentResponseSchema },
+      },
+    },
+    async (req, reply) => {
+      const payload = await getPurchaseAssessment(req.params.vehicleId);
+      if (!payload) return sendError(reply, notFound('Vehicle', req.params.vehicleId));
       if (applyCacheHeaders(req, reply, payload, 30)) return reply;
       return payload;
     },

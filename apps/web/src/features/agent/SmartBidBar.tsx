@@ -9,8 +9,6 @@ import { formatCurrency } from '@/lib/format';
 import { useAgentStore } from '@/state/agentStore';
 import { Tooltip } from '@/ui/Tooltip';
 
-
-
 interface SmartBidBarProps {
   vehicleId: string;
   onPrefill?: (amount: number) => void;
@@ -56,7 +54,7 @@ export function SmartBidBar({ vehicleId, onPrefill }: SmartBidBarProps) {
             <p className="font-medium">Why this amount?</p>
             {rec.detail ? <p>{rec.detail}</p> : <p>{rec.text}</p>}
             {rec.sources.length > 0 ? (
-              <p className="text-[10px] uppercase tracking-wide text-neutral-500">
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">
                 {rec.sources.join(' · ')}
               </p>
             ) : null}
@@ -74,11 +72,7 @@ export function SmartBidBar({ vehicleId, onPrefill }: SmartBidBarProps) {
         className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent hover:bg-accent/20"
       >
         <Sparkles size={12} aria-hidden="true" />
-        {amount
-          ? `AI Max Bid ${formatCurrency(amount)}`
-          : loading
-            ? 'AI Max Bid …'
-            : 'AI Max Bid'}
+        {amount ? `AI Max Bid ${formatCurrency(amount)}` : loading ? 'AI Max Bid …' : 'AI Max Bid'}
       </button>
     </Tooltip>
   );

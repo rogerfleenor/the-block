@@ -4,10 +4,16 @@
 
 /* Smooth scroll, reduce motion respect. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 }
 html {
   scroll-behavior: smooth;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-slate-900 antialiased;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

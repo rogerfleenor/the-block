@@ -2,7 +2,6 @@ import type { Vehicle } from '@block/shared';
 
 import { formatKm } from '@/lib/format';
 
-
 interface SpecsProps {
   vehicle: Vehicle;
 }
@@ -23,8 +22,8 @@ export function Specs({ vehicle }: SpecsProps) {
     <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2">
       {rows.map(([k, v]) => (
         <div key={k} className="flex flex-col">
-          <dt className="text-[11px] uppercase tracking-wide text-neutral-500">{k}</dt>
-          <dd className="text-neutral-900 dark:text-neutral-100">{v}</dd>
+          <dt className="text-[11px] uppercase tracking-wide text-slate-500">{k}</dt>
+          <dd className="text-slate-900 dark:text-slate-100">{v}</dd>
         </div>
       ))}
     </dl>

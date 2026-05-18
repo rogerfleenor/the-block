@@ -94,12 +94,12 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
     <form className="space-y-2" onSubmit={onSubmit} noValidate>
       <label
         htmlFor={`bid-amount-${vehicle.id}`}
-        className="block text-xs font-medium text-neutral-600 dark:text-neutral-400"
+        className="block text-xs font-medium text-slate-600 dark:text-slate-400"
       >
         Your bid
       </label>
-      <div className="flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30 dark:border-neutral-700 dark:bg-neutral-900">
-        <span aria-hidden="true" className="text-neutral-500">
+      <div className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30 dark:border-slate-700 dark:bg-slate-900">
+        <span aria-hidden="true" className="text-slate-500">
           $
         </span>
         <input
@@ -117,7 +117,7 @@ export function BidForm({ vehicle, prefilledAmount, onPlaced }: BidFormProps) {
           aria-describedby={`bid-help-${vehicle.id}`}
         />
       </div>
-      <p id={`bid-help-${vehicle.id}`} className="text-[11px] text-neutral-500">
+      <p id={`bid-help-${vehicle.id}`} className="text-[11px] text-slate-500">
         Min next bid: <strong>{formatCurrency(validation.minNextBid)}</strong>
       </p>
       {showError && !validation.ok ? (

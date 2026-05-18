@@ -12,6 +12,7 @@ import {
   type AgentSuggestion,
   type ToolCall,
   type ToolName,
+  type VehicleFilters,
 } from '@block/shared';
 
 import { makeId } from '../lib/ids.js';
@@ -19,11 +20,7 @@ import { logger } from '../lib/logger.js';
 
 import { GuardrailError, runGuardedTool } from './guardrails.js';
 import { appendAgentLog } from './log.js';
-import {
-  type AgentContext,
-  type AgentInvokeArgs,
-  type AgentInvokeOutcome,
-} from './types.js';
+import { type AgentContext, type AgentInvokeArgs, type AgentInvokeOutcome } from './types.js';
 
 interface PlannedCall {
   tool: ToolName;
@@ -77,14 +74,20 @@ function parseMoney(raw: string): number {
   return Number(clean);
 }
 
-interface ParsedFilters {
-  make?: string;
-  body?: string;
-  province?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  minGrade?: number;
+/** ISO-style VIN: 17 chars; also accept 11–16 for partial search. */
+function extractVinFromUtterance(utterance: string): string | undefined {
+  const t = utterance.trim();
+  if (!t) return undefined;
+  const m17 = /\b([A-HJ-NPR-Z0-9]{17})\b/i.exec(t);
+  if (m17?.[1]) return m17[1].toUpperCase();
+  const mPrefix = /\bvin\s*[:\s.-]*\s*([A-HJ-NPR-Z0-9]{6,17})\b/i.exec(t);
+  if (mPrefix?.[1] && mPrefix[1].length >= 11) return mPrefix[1].toUpperCase();
+  const compact = t.replace(/\s/g, '');
+  if (/^[A-HJ-NPR-Z0-9]{11,17}$/i.test(compact)) return compact.toUpperCase();
+  return undefined;
 }
+
+type ParsedFilters = Partial<VehicleFilters>;
 
 function parseFilters(utterance: string): ParsedFilters {
   const lower = utterance.toLowerCase();
@@ -109,7 +112,32 @@ function parseFilters(utterance: string): ParsedFilters {
   const over = FILTER_PRICE_OVER_RX.exec(lower);
   if (over && over[1]) out.minPrice = parseMoney(over[1]);
   if (/low\s+mileage|low\s+km/.test(lower)) out.minGrade = 3.5;
+  if (/\bhybrid\b/.test(lower)) out.fuelType = 'hybrid';
+  if (/\bdiesel\b/.test(lower)) out.fuelType = 'diesel';
+  if (/\be-?gas|gasoline|petrol\b/.test(lower)) out.fuelType = 'gasoline';
+  if (/\bawd\b/.test(lower)) out.drivetrain = 'AWD';
+  if (/\bfwd\b/.test(lower)) out.drivetrain = 'FWD';
+  if (/\brwd\b/.test(lower)) out.drivetrain = 'RWD';
+  if (/\b4wd|four\s*wheel\b/.test(lower)) out.drivetrain = '4WD';
+  if (/\bcvt\b/.test(lower)) out.transmission = 'CVT';
+  if (/\bautomatic\b/.test(lower)) out.transmission = 'automatic';
+  if (/\bmanual\b/.test(lower)) out.transmission = 'manual';
+  if (/\bclean\s+title\b/.test(lower)) out.title = 'clean';
+  if (/\bsalvage\b/.test(lower)) out.title = 'salvage';
+  if (/\brebuilt\b/.test(lower)) out.title = 'rebuilt';
+  const vin = /\bvin\s*[:\s]?\s*([A-HJ-NPR-Z0-9]{6,17})\b/i.exec(utterance);
+  if (vin && vin[1] && vin[1].length >= 11) out.vin = vin[1].toUpperCase();
   return out;
+}
+
+/** Remaining words after stripping command + price phrases (used as inventory `q`). */
+function utteranceToInventoryQ(utterance: string): string | undefined {
+  let s = utterance.replace(/^(find|show|search|filter|browse|look\s+for)\s+/gi, '');
+  s = s.replace(/\b(under|over)\s+\$?\d[\d,.kK]*\b/gi, '');
+  s = s.replace(/\bin\s+[a-z]{2,}(?:\s+[a-z]+)*\b/gi, '');
+  s = s.trim();
+  if (s.length < 2) return undefined;
+  return s;
 }
 
 export function planUtterance(args: AgentInvokeArgs): {
@@ -142,13 +170,31 @@ export function planUtterance(args: AgentInvokeArgs): {
     return { plan, reply: 'Pulled comparable listings.' };
   }
 
-  if (SHOW_RX.test(lower) || /\b(under|over)\b/.test(lower)) {
-    const filters = parseFilters(args.utterance);
+  const vin = extractVinFromUtterance(args.utterance);
+  if (vin) {
+    const filters = { vin };
     plan.push({
       tool: 'searchInventory',
-      input: { q: undefined, filters, sort: 'ending_soon', limit: 12 },
+      input: { filters, sort: 'ending_soon', limit: 12 },
     });
     plan.push({ tool: 'setFilters', input: { filters } });
+    return { plan, reply: `Searching inventory for VIN ${vin}.` };
+  }
+
+  if (SHOW_RX.test(lower) || /\b(under|over)\b/.test(lower)) {
+    const filters = parseFilters(args.utterance);
+    const q = utteranceToInventoryQ(args.utterance);
+    const merged = { ...filters, ...(q ? { q } : {}) };
+    plan.push({
+      tool: 'searchInventory',
+      input: {
+        q,
+        filters: Object.keys(filters).length ? filters : undefined,
+        sort: 'ending_soon',
+        limit: 12,
+      },
+    });
+    plan.push({ tool: 'setFilters', input: { filters: merged } });
     return { plan, reply: 'Applied filters to inventory.' };
   }
 
@@ -157,7 +203,10 @@ export function planUtterance(args: AgentInvokeArgs): {
     return { plan, reply: 'Pulled vehicle intel.' };
   }
 
-  return { plan: [], reply: "I couldn't map that to a tool. Try 'bid <amount>' or 'show trucks under 25k'." };
+  return {
+    plan: [],
+    reply: "I couldn't map that to a tool. Try 'bid <amount>' or 'show trucks under 25k'.",
+  };
 }
 
 export async function invokeMockAgent(args: AgentInvokeArgs): Promise<AgentInvokeOutcome> {
@@ -174,7 +223,11 @@ export async function invokeMockAgent(args: AgentInvokeArgs): Promise<AgentInvok
     requestId: log.bindings().requestId ?? 'no-request',
     traceId,
     kind: 'invoke',
-    payload: { utterance: args.utterance, context: args.context, plannedTools: plan.map((p) => p.tool) },
+    payload: {
+      utterance: args.utterance,
+      context: args.context,
+      plannedTools: plan.map((p) => p.tool),
+    },
   });
 
   for (const step of plan) {

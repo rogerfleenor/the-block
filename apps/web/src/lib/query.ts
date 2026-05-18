@@ -15,9 +15,11 @@ export const queryClient = new QueryClient({
 });
 
 export const queryKeys = {
+  vehicleFacets: () => ['vehicleFacets'] as const,
   vehicles: (q: Record<string, unknown>) => ['vehicles', q] as const,
   vehicle: (id: string) => ['vehicle', id] as const,
   bids: (id: string) => ['bids', id] as const,
   intel: (id: string) => ['intel', id] as const,
   agentFacts: (id: string) => ['agentFacts', id] as const,
+  purchaseAssessment: (id: string) => ['purchaseAssessment', id] as const,
 };
